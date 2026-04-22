@@ -1,0 +1,345 @@
+/* ---------- Design tokens ---------- */
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f3f1ec;
+  --border: #e4e1da;
+  --text: #1c1b19;
+  --text-2: #55524b;
+  --text-3: #85817a;
+  --accent: #2a78d6;
+  --accent-ink: #1c5cab;
+  --accent-soft: #e3eefc;
+  --accent-solid: #2a78d6;
+  --good: #0ca30c;
+  --critical: #d03b3b;
+  --warning: #b77a00;
+
+  /* Sequential ramp (blue, light -> dark) for magnitude encodings. 0 = empty. */
+  --seq-0: #f0efec;
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #6da7ec;
+  --seq-4: #3987e5;
+  --seq-5: #256abf;
+  --seq-6: #184f95;
+  --seq-7: #0d366b;
+  --seq-ink-light: #1c1b19;
+  --seq-ink-dark: #ffffff;
+
+  /* Step-by-step roles (categorical slots 1-3, validated together in both modes):
+     compare = looking at, change = writing / mismatch, done = settled / accepted. */
+  --role-compare: #2a78d6;
+  --role-change: #eb6834;
+  --role-done: #1baf7a;
+  --role-idle: #b9b6ae;
+
+  /* Class / series identity: the same three validated slots under a name that isn't about
+     steps. There is no 4th: no fourth hue clears the dark-mode separation floors against
+     these three, so identity past 3 must come from shape, a direct label, or faceting. */
+  --cat-1: var(--role-compare);
+  --cat-2: var(--role-change);
+  --cat-3: var(--role-done);
+
+  /* Diverging scale for signed values (weights, activations, gradients): red − · gray 0 · blue +. */
+  --div-neg: #a93226;
+  --div-mid: #f0efec;
+  --div-pos: #184f95;
+  --heat-ink-strong: #ffffff;
+  --contour-lo: #fbfaf7;
+  --contour-hi: #b3afa6;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Cascadia Code', 'SF Mono', Consolas, monospace;
+
+  --radius: 10px;
+  --maxw: 72rem;
+  --prose: 44rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #141413;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --border: #33322f;
+    --text: #ecebe8;
+    --text-2: #b4b1aa;
+    --text-3: #87847d;
+    --accent: #6da7ec;
+    --accent-ink: #9ec5f4;
+    --accent-soft: #1b2a3d;
+    --accent-solid: #256abf;
+    --warning: #fab219;
+    --seq-0: #2a2a28;
+    --seq-1: #0d366b;
+    --seq-2: #104281;
+    --seq-3: #1c5cab;
+    --seq-4: #2a78d6;
+    --seq-5: #5598e7;
+    --seq-6: #86b6ef;
+    --seq-7: #cde2fb;
+    --seq-ink-light: #ffffff;
+    --seq-ink-dark: #1c1b19;
+    --role-compare: #3987e5;
+    --role-change: #d95926;
+    --role-done: #199e70;
+    --role-idle: #5f5d58;
+    --div-neg: #f08c84;
+    --div-mid: #383835;
+    --div-pos: #86b6ef;
+    --heat-ink-strong: #141413;
+    --contour-lo: #1b1b1a;
+    --contour-hi: #5a5853;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #141413;
+  --surface: #1a1a19;
+  --surface-2: #232321;
+  --border: #33322f;
+  --text: #ecebe8;
+  --text-2: #b4b1aa;
+  --text-3: #87847d;
+  --accent: #6da7ec;
+  --accent-ink: #9ec5f4;
+  --accent-soft: #1b2a3d;
+  --accent-solid: #256abf;
+  --warning: #fab219;
+  --seq-0: #2a2a28;
+  --seq-1: #0d366b;
+  --seq-2: #104281;
+  --seq-3: #1c5cab;
+  --seq-4: #2a78d6;
+  --seq-5: #5598e7;
+  --seq-6: #86b6ef;
+  --seq-7: #cde2fb;
+  --seq-ink-light: #ffffff;
+  --seq-ink-dark: #1c1b19;
+  --role-compare: #3987e5;
+  --role-change: #d95926;
+  --role-done: #199e70;
+  --role-idle: #5f5d58;
+  --div-neg: #f08c84;
+  --div-mid: #383835;
+  --div-pos: #86b6ef;
+  --heat-ink-strong: #141413;
+  --contour-lo: #1b1b1a;
+  --contour-hi: #5a5853;
+}
+
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent-ink);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+:not(pre) > code {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+}
+
+pre {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+/* Shiki dual themes: swap to the dark token colors when dark is active. */
+:root[data-theme='dark'] .astro-code,
+:root[data-theme='dark'] .astro-code span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .astro-code,
+  :root:not([data-theme='light']) .astro-code span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.container {
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2rem);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.muted {
+  color: var(--text-2);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Long-form content ---------- */
+/* Text is held to a reading width; interactive widgets (.wide, or islands, which render
+   inside a display:contents <astro-island>) use the full container width. */
+.prose > * {
+  max-width: var(--prose);
+}
+.prose > .wide {
+  max-width: none;
+}
+.prose h2 {
+  margin-top: 2.5rem;
+  font-size: 1.5rem;
+}
+.prose h3 {
+  margin-top: 2rem;
+  font-size: 1.2rem;
+}
+.prose p,
+.prose li {
+  color: var(--text);
+}
+.prose blockquote {
+  margin: 1.5rem 0;
+  padding: 0.25rem 1.25rem;
+  border-left: 3px solid var(--accent);
+  color: var(--text-2);
+}
+.prose table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.prose th,
+.prose td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+}
+
+/* ---------- Shared controls (used by visualizations too) ---------- */
+.btn {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.btn:hover {
+  border-color: var(--text-3);
+}
+.btn.primary {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: #fff;
+}
+.btn.primary:hover {
+  filter: brightness(1.08);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  min-width: 0;
+}
+
+.tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+button.tag {
+  cursor: pointer;
+}
