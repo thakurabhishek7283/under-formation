@@ -1,0 +1,70 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { getPosts } from '../../lib/content';
+
+const posts = await getPosts();
+---
+
+<BaseLayout title="Blog" description="Notes and write-ups on things I'm building and learning.">
+  <div class="container">
+    <p class="eyebrow">Blog</p>
+    <h1>Writing</h1>
+    <ul>
+      {
+        posts.map((post) => (
+          <li>
+            <a href={`/blog/${post.id}/`}>
+              <span class="title">{post.data.title}</span>
+              <span class="muted desc">{post.data.description}</span>
+            </a>
+            <span class="date">
+              <FormattedDate date={post.data.pubDate} />
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</BaseLayout>
+
+<style>
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    margin: 0.25rem 0 1.5rem;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: 48rem;
+  }
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  a {
+    display: grid;
+    gap: 0.2rem;
+    text-decoration: none;
+    flex: 1 1 20rem;
+  }
+  .title {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  a:hover .title {
+    color: var(--accent-ink);
+  }
+  .date {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-3);
+  }
+</style>
