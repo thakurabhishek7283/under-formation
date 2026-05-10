@@ -1,0 +1,45 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Card from '../../components/Card.astro';
+import { getProjects, STATUS_LABEL } from '../../lib/content';
+
+const projects = await getProjects();
+---
+
+<BaseLayout title="Projects" description="Things I've built, with source code and write-ups on how they work.">
+  <div class="container">
+    <p class="eyebrow">Projects</p>
+    <h1>Things I've built</h1>
+    <p class="muted lede">Source code and a write-up of how each one works. Where there's a live demo, it's embedded right on the page.</p>
+    <div class="grid">
+      {
+        projects.map((p) => (
+          <Card
+            href={`/projects/${p.id}/`}
+            title={p.data.title}
+            description={p.data.description}
+            meta={p.data.date.getFullYear().toString()}
+            badge={p.data.demo ? STATUS_LABEL[p.data.status] : undefined}
+            tags={p.data.tech}
+          />
+        ))
+      }
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    margin: 0.25rem 0 0.5rem;
+  }
+  .lede {
+    max-width: 40rem;
+    margin-bottom: 2rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: 1rem;
+  }
+</style>

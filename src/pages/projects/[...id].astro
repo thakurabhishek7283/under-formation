@@ -1,0 +1,49 @@
+---
+import { render } from 'astro:content';
+import ArticleLayout from '../../layouts/ArticleLayout.astro';
+import DemoFrame from '../../components/DemoFrame.astro';
+import { getProjects, STATUS_LABEL } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const projects = await getProjects();
+  return projects.map((project) => ({ params: { id: project.id }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+const { title, description, date, tech, repo, demo, status } = project.data;
+---
+
+<ArticleLayout
+  title={title}
+  description={description}
+  date={date}
+  eyebrow={demo || status !== 'live' ? STATUS_LABEL[status] : 'Project'}
+  tags={tech}
+  back={{ href: '/projects/', label: 'All projects' }}
+>
+  <div slot="header-extra" class="actions">
+    {demo && <a class="btn primary" href={demo.url} target="_blank" rel="noopener">Open live demo ↗</a>}
+    {repo && <a class="btn" href={repo} target="_blank" rel="noopener">Source code</a>}
+  </div>
+
+  {demo?.embed && (
+    <div class="wide">
+      <DemoFrame url={demo.url} title={title} height={demo.height} />
+    </div>
+  )}
+
+  <Content />
+</ArticleLayout>
+
+<style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+  .actions a {
+    text-decoration: none;
+  }
+</style>
