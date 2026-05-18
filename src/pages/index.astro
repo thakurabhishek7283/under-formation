@@ -1,0 +1,166 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Card from '../components/Card.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+import { AUTHOR, SOCIALS } from '../consts';
+import { getPosts, getProjects, getVisualizations, STATUS_LABEL } from '../lib/content';
+
+const projects = (await getProjects()).slice(0, 4);
+const viz = (await getVisualizations()).slice(0, 3);
+const posts = (await getPosts()).slice(0, 5);
+---
+
+<BaseLayout>
+  <div class="container">
+    <section class="hero">
+      <p class="eyebrow">Hello, I'm</p>
+      <h1>{AUTHOR.name}</h1>
+      <p class="lede">{AUTHOR.tagline}</p>
+      <p class="muted intro">
+        I'm a {AUTHOR.role}, building .NET services for search, RAG and LLM agent integrations. Before that I spent
+        two and a half years at I2V Systems on a video analytics platform running across up to 10,000
+        cameras. <a href="/about/">More about me →</a>
+      </p>
+      <p class="muted intro">
+        This is where I keep <a href="/projects/">things I've built</a>, <a href="/visualize/">interactive
+        visualizations</a> of algorithms, data structures and ML models I've
+        learned, and <a href="/blog/">notes</a> along the way.
+      </p>
+      <div class="links">
+        {SOCIALS.map((s) => <a class="btn" href={s.href} rel="me noopener" target="_blank">{s.label}</a>)}
+      </div>
+    </section>
+
+    {
+      projects.length > 0 && (
+        <section>
+          <div class="section-head">
+            <h2>Projects</h2>
+            <a href="/projects/">All projects →</a>
+          </div>
+          <div class="grid">
+            {projects.map((p) => (
+              <Card
+                href={`/projects/${p.id}/`}
+                title={p.data.title}
+                description={p.data.description}
+                meta={p.data.date.getFullYear().toString()}
+                badge={p.data.demo ? STATUS_LABEL[p.data.status] : undefined}
+                tags={p.data.tech}
+              />
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    {
+      viz.length > 0 && (
+        <section>
+          <div class="section-head">
+            <h2>Visualize</h2>
+            <a href="/visualize/">All visualizations →</a>
+          </div>
+          <div class="grid">
+            {viz.map((v) => (
+              <Card href={`/visualize/${v.id}/`} title={v.data.title} description={v.data.description} meta={v.data.category} />
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    {
+      posts.length > 0 && (
+        <section>
+          <div class="section-head">
+            <h2>Writing</h2>
+            <a href="/blog/">All posts →</a>
+          </div>
+          <ul class="posts">
+            {posts.map((post) => (
+              <li>
+                <a href={`/blog/${post.id}/`}>{post.data.title}</a>
+                <span class="muted">
+                  <FormattedDate date={post.data.pubDate} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .hero {
+    padding-block: 2rem 1rem;
+    max-width: 44rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    margin: 0.25rem 0 0.5rem;
+  }
+  .lede {
+    font-size: 1.35rem;
+    margin: 0 0 1rem;
+    color: var(--text);
+  }
+  .intro {
+    font-size: 1.05rem;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+  .links .btn {
+    text-decoration: none;
+  }
+  section {
+    margin-top: 3.5rem;
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .section-head h2 {
+    margin: 0;
+    font-size: 1.4rem;
+  }
+  .section-head a {
+    font-size: 0.9rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: 1rem;
+  }
+  .posts {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .posts li {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .posts a {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .posts a:hover {
+    color: var(--accent-ink);
+  }
+</style>

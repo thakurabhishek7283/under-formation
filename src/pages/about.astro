@@ -1,0 +1,223 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { AUTHOR, SOCIALS } from '../consts';
+
+// Mirrors the resume. Keep the numbers here in sync with it when it changes.
+const experience = [
+  {
+    company: 'Eurofins IT Delivery Center',
+    role: 'Software Engineer',
+    dates: 'Oct 2025 – Present',
+    summary: 'Search, RAG and LLM agent integrations for an enterprise procurement platform.',
+    points: [
+      '.NET services for catalog search on Elasticsearch: exact SKU matching, trigram typo tolerance, scientific-term synonyms and dense-vector similarity, merged with Reciprocal Rank Fusion. Search indexes stay in sync with transactional writes through Change Data Capture.',
+      'Extended the RAG pipeline for assay documentation with metadata-driven chunking and Azure OpenAI embeddings; moved document ingestion to Hangfire background jobs to keep heavy processing off live traffic, and added Redis semantic caching for repeat queries.',
+      'A CI relevance evaluation pipeline over a golden-query set, scored with MRR and NDCG, that fails the build below 0.85 so search and RAG ranking regressions are caught before release.',
+      'Model Context Protocol (MCP) endpoints in ASP.NET Core, exposing procurement capabilities to internal LLM agents through typed tool schemas and role-based access control.',
+      'Angular SSR for the SEO-critical pages of a headless Umbraco application, with Redis-cached HTML and static assets on AWS S3 / CloudFront.',
+    ],
+  },
+  {
+    company: 'I2V Systems',
+    role: 'Software Engineer',
+    dates: 'Apr 2023 – Sep 2025',
+    summary: 'A video analytics platform deployed across up to 10,000 cameras.',
+    points: [
+      'Event-driven platform on RabbitMQ, MassTransit and Hangfire; helped take processing throughput from 20–30 to 500+ events/sec.',
+      'Refactored a 40+ project .NET 8 monolith toward Clean Architecture, cutting dependency violations by 90% and production issues by 20%.',
+      'Face recognition pipeline on pgvector and Milvus with HNSW and IVF_SQ8 indexes, with embeddings served through NVIDIA Triton; scalar quantization cut ANN index memory by 75%.',
+      'ANPR pipelines and dashboards for traffic activity, violations and entry/exit monitoring, including a Central Monitoring Hub aggregating events from 100+ servers. Materialized views, scheduled preprocessing and query tuning keep time-based retrieval fast.',
+      'Reworked a 100K+ record analytics export in .NET and PostgreSQL: 12 minutes down to under 1 (92% faster), and reliable on Linux.',
+      'TimescaleDB ingestion for 400 cameras from 70 to 300+ frames/sec through indexing and database tuning, diagnosed from PostgreSQL query plans and inefficient EF Core queries.',
+    ],
+  },
+];
+
+const skills = [
+  { group: 'Languages', items: ['C#', 'TypeScript', 'Python', 'SQL', 'JavaScript', 'Bash'] },
+  { group: 'Backend', items: ['ASP.NET Core', 'EF Core', '.NET 8', 'SignalR', 'RabbitMQ', 'MassTransit', 'Hangfire'] },
+  {
+    group: 'Databases & search',
+    items: ['PostgreSQL', 'TimescaleDB', 'Redis', 'Elasticsearch', 'MS SQL Server', 'Query plans & tuning'],
+  },
+  {
+    group: 'AI & vector search',
+    items: ['RAG', 'pgvector', 'Milvus (HNSW, IVF_SQ8)', 'Model Context Protocol', 'Azure OpenAI embeddings', 'NVIDIA Triton', 'MRR / NDCG evaluation'],
+  },
+  { group: 'Frontend', items: ['Angular (RxJS, Signals, SSR)', 'Umbraco', 'TypeScript libraries'] },
+  { group: 'Cloud & ops', items: ['Docker', 'Azure DevOps CI/CD', 'AWS (S3, CloudFront)', 'Linux', 'Grafana', 'Git'] },
+  { group: 'Architecture & testing', items: ['Clean Architecture', 'Domain-Driven Design', 'MSTest', 'Karma / Jasmine'] },
+];
+---
+
+<BaseLayout
+  title="About"
+  description={`${AUTHOR.name}: software engineer with 3.5+ years building .NET backends, event pipelines, search and RAG systems.`}
+>
+  <div class="container">
+    <p class="eyebrow">About</p>
+    <h1>{AUTHOR.name}</h1>
+    <div class="intro">
+      <p class="lede">
+        Software engineer with 3.5+ years building <strong>.NET</strong> backend systems, distributed event pipelines,
+        data-intensive applications and <strong>Angular</strong> web platforms.
+      </p>
+      <p class="muted">
+        At I2V Systems I worked on a video analytics platform running across up to 10,000 cameras: event throughput,
+        PostgreSQL / TimescaleDB performance, analytics exports, and vector search for face recognition and ANPR. At
+        Eurofins I'm taking the same foundation into Elasticsearch, RAG, semantic search, embeddings and LLM agent
+        integrations for an enterprise procurement platform.
+      </p>
+      <div class="links">
+        <a class="btn primary" href={`mailto:${AUTHOR.email}`}>Email me</a>
+        {SOCIALS.map((s) => <a class="btn" href={s.href} rel="me noopener" target="_blank">{s.label}</a>)}
+      </div>
+    </div>
+
+    <section aria-labelledby="exp">
+      <h2 id="exp">Experience</h2>
+      {
+        experience.map((job) => (
+          <article class="job">
+            <div class="job-head">
+              <div>
+                <h3>{job.company}</h3>
+                <p class="role">{job.role}</p>
+              </div>
+              <span class="dates">{job.dates}</span>
+            </div>
+            <p class="muted summary">{job.summary}</p>
+            <ul>
+              {job.points.map((p) => (
+                <li>{p}</li>
+              ))}
+            </ul>
+          </article>
+        ))
+      }
+    </section>
+
+    <section aria-labelledby="skills">
+      <h2 id="skills">Skills</h2>
+      <dl class="skills">
+        {
+          skills.map((s) => (
+            <div>
+              <dt>{s.group}</dt>
+              <dd>
+                {s.items.map((i) => (
+                  <span class="tag">{i}</span>
+                ))}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section aria-labelledby="edu">
+      <h2 id="edu">Education</h2>
+      <div class="job-head">
+        <div>
+          <h3>Maharaja Agrasen Institute of Technology</h3>
+          <p class="role">B.Tech, Information Technology</p>
+        </div>
+        <span class="dates">2019 – 2023</span>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    margin: 0.25rem 0 0.75rem;
+  }
+  .intro {
+    max-width: var(--prose);
+  }
+  .lede {
+    font-size: 1.2rem;
+    margin: 0 0 0.75rem;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+  .links .btn {
+    text-decoration: none;
+  }
+  section {
+    margin-top: 3rem;
+    max-width: 52rem;
+  }
+  h2 {
+    font-size: 1.4rem;
+    margin: 0 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .job + .job {
+    margin-top: 2rem;
+  }
+  .job-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+  h3 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .role {
+    margin: 0.1rem 0 0;
+    color: var(--text-2);
+    font-style: italic;
+  }
+  .dates {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+  .summary {
+    margin: 0.5rem 0;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+  li {
+    margin: 0.4rem 0;
+    line-height: 1.6;
+  }
+  .skills {
+    display: grid;
+    gap: 0.9rem;
+    margin: 0;
+  }
+  .skills > div {
+    display: grid;
+    grid-template-columns: minmax(0, 11rem) 1fr;
+    gap: 0.5rem 1rem;
+  }
+  dt {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  dd {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  @media (max-width: 34rem) {
+    .skills > div {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
