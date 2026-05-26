@@ -1,0 +1,592 @@
+/* Shared styling for interactive visualizations. */
+
+.viz {
+  margin: 2rem 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: grid;
+  gap: 1.25rem;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.viz-row .input {
+  flex: 1 1 12rem;
+}
+
+.viz-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 0.5rem;
+}
+
+.viz-slider {
+  display: grid;
+  gap: 0.2rem;
+  flex: 1 1 11rem;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.viz-slider output {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+.viz-slider input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* Stat tiles */
+.viz-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.6rem;
+}
+.viz-stat {
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.viz-stat .k {
+  font-size: 0.78rem;
+  color: var(--text-3);
+}
+.viz-stat .v {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cell grids (bit arrays, registers) */
+.viz-cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--cell, 2rem), 1fr));
+  gap: 2px;
+}
+.viz-cell {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: var(--seq-0);
+  color: var(--text-3);
+  position: relative;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+  cursor: default;
+}
+.viz-cell.hl {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--accent);
+  z-index: 1;
+}
+.viz-cell.miss {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--critical);
+  z-index: 1;
+}
+
+/* Tooltip for cells (hover + keyboard focus) */
+.viz-cell[data-tip]:hover::after,
+.viz-cell[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.75rem;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Verdict banner: icon + label, never color alone */
+.viz-verdict {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.95rem;
+}
+.viz-verdict .icon {
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.viz-verdict.good .icon {
+  color: var(--good);
+}
+.viz-verdict.bad .icon {
+  color: var(--critical);
+}
+.viz-verdict.neutral .icon {
+  color: var(--accent);
+}
+
+.viz-mono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  overflow-x: auto;
+}
+
+.viz-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.viz-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.viz-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+.viz-legend .sw {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ---------- Step player ---------- */
+.viz-player {
+  display: grid;
+  gap: 0.6rem;
+}
+.viz-caption {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  min-height: 3.2rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 0.95rem;
+}
+.viz-step-no {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.btn.icon {
+  padding-inline: 0.6rem;
+  line-height: 1;
+}
+.btn.play {
+  min-width: 6.5rem;
+}
+.viz-scrub {
+  flex: 1 1 8rem;
+  accent-color: var(--accent);
+  min-width: 6rem;
+}
+.viz-speed select {
+  font-size: 0.85rem;
+  padding-block: 0.35rem;
+}
+
+/* ---------- Form bits ---------- */
+.viz-field {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+.viz-field.grow {
+  flex: 1 1 14rem;
+}
+.input.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+.viz-ops {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.viz-ops code {
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.95rem;
+}
+.viz-op-label {
+  min-width: 6.5rem;
+  font-size: 0.85rem;
+  color: var(--text-3);
+}
+.viz-num {
+  width: 4.2rem;
+  padding: 0.25rem 0.4rem;
+  font-family: var(--font-mono);
+}
+.viz-scroll {
+  overflow-x: auto;
+  padding-block: 0.25rem;
+}
+
+/* ---------- Sorting bars ---------- */
+.viz-bars {
+  display: grid;
+  gap: 2px;
+  height: 14rem;
+  align-items: end;
+}
+.viz-bar-slot {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  transition: opacity 0.2s;
+}
+.viz-bar {
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+  transition:
+    height 0.15s,
+    background 0.15s;
+}
+.viz-bar-label {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-2);
+  margin-bottom: 2px;
+}
+.viz-markers {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text);
+  min-height: 1.1rem;
+}
+.viz-buffer {
+  margin-top: 0.75rem;
+}
+.viz-cells-row {
+  display: grid;
+  gap: 2px;
+}
+.viz-chip-cell {
+  display: grid;
+  place-items: center;
+  min-height: 1.9rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text);
+  transition: opacity 0.2s;
+}
+
+/* ---------- SVG trees ---------- */
+.viz-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-inline: auto;
+  overflow: visible;
+}
+.viz-svg text {
+  text-anchor: middle;
+  font-family: var(--font-mono);
+}
+.viz-svg-range {
+  font-size: 10px;
+  fill: var(--text-3);
+}
+.viz-svg-value {
+  font-size: 14px;
+  font-weight: 700;
+  fill: var(--text);
+}
+.viz-svg rect,
+.viz-svg line {
+  transition:
+    fill 0.2s,
+    stroke 0.2s;
+}
+
+/* ---------- Fenwick grid ---------- */
+.viz-fen {
+  display: grid;
+  gap: 4px 2px;
+}
+.viz-fen-idx {
+  display: grid;
+  justify-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.viz-fen-bin {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  letter-spacing: 0.02em;
+}
+.viz-fen-bin u {
+  color: var(--text);
+  font-weight: 700;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+}
+.viz-fen-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+/* ---------- KMP ---------- */
+.viz-kmp {
+  display: grid;
+  gap: 4px;
+  min-width: max-content;
+}
+.viz-kmp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.viz-kmp-label {
+  width: 3.8rem;
+  flex: none;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.viz-kmp-cells {
+  display: grid;
+  gap: 2px;
+}
+.viz-kmp-cells.idx span {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-3);
+}
+.viz-kmp-cell {
+  display: grid;
+  place-items: center;
+  height: 1.9rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--text);
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.viz-kmp-match {
+  grid-row: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--role-done);
+}
+
+/* ---------- Code panel: the algorithm, with the executing line highlighted ---------- */
+
+/* Visual on the left, code on the right once there's room for both. */
+.viz-split {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (min-width: 64rem) {
+  .viz-split {
+    /* The right column is sized so a ~46-character listing fits without clipping. */
+    grid-template-columns: minmax(0, 1.35fr) minmax(23rem, 0.9fr);
+  }
+}
+
+.viz-code {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  padding: 0.75rem 0 0;
+  min-width: 0;
+}
+.viz-code .viz-label {
+  margin: 0 0 0.5rem;
+  padding: 0 0.85rem;
+}
+
+.viz-code-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 28rem;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  tab-size: 2;
+  /* No ligatures: a learner should see !== and ===, not a glyph for them. */
+  font-variant-ligatures: none;
+}
+.viz-code-lines li {
+  display: grid;
+  grid-template-columns: 2.1rem 1fr;
+  gap: 0.5rem;
+  padding: 0 0.6rem 0 0;
+  border-left: 2px solid transparent;
+  white-space: pre;
+  /* So a highlighted row still spans the full line if the panel has to scroll. */
+  min-width: max-content;
+}
+.viz-code-lines .n {
+  text-align: right;
+  color: var(--text-3);
+  opacity: 0.65;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.viz-code-lines code {
+  font-size: inherit;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+/* The step's line. Marked by background *and* the ▸ gutter arrow, never colour alone. */
+.viz-code-lines li.on {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+.viz-code-lines li.on .n::after {
+  content: ' ▸';
+  color: var(--accent);
+  opacity: 1;
+}
+.viz-code-lines li.on .n {
+  color: var(--accent-ink);
+  opacity: 1;
+}
+
+.t-com {
+  color: var(--text-3);
+  font-style: italic;
+}
+.t-kw {
+  color: var(--accent-ink);
+}
+.t-str {
+  color: var(--good);
+}
+.t-fn {
+  color: var(--text);
+  font-weight: 500;
+}
+.t-num,
+.t-txt {
+  color: var(--text-2);
+}
+
+/* Live variables for the current step. */
+.viz-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.6rem 0.85rem 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.viz-vars > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.viz-vars dt {
+  color: var(--text-3);
+}
+.viz-vars dt::after {
+  content: ' =';
+}
+.viz-vars dd {
+  margin: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+/* Changed since the previous step. Kept quiet — on a busy step most values move, and a
+   grid of outlined boxes would say nothing. The marker is the bar, plus the value's colour. */
+.viz-vars > div.changed {
+  border-left: 2px solid var(--role-change);
+  padding-left: 0.35rem;
+}
+.viz-vars > div.changed dd {
+  color: var(--role-change);
+}
+
+/* Number inside a marker drawn in data coordinates (0-100 viewBox). */
+.viz-svg-pin {
+  font-size: 3.6px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+/* Label inside an SVG drawn in data coordinates. Font size is NOT set here: SVG text
+   scales with the viewBox, so a 4px label is tiny in one chart and huge in another.
+   Every caller passes an explicit fontSize suited to its own coordinate system. */
+.viz-svg-mini {
+  fill: var(--text-3);
+}

@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Card from '../../components/Card.astro';
+import { getVisualizations } from '../../lib/content';
+
+const all = await getVisualizations();
+const byCategory = Map.groupBy(all, (v) => v.data.category);
+---
+
+<BaseLayout
+  title="Visualize"
+  description="Interactive visualizations of algorithms and data structures, built while learning them."
+>
+  <div class="container">
+    <p class="eyebrow">Visualize</p>
+    <h1>Learn by poking at it</h1>
+    <p class="muted lede">
+      Interactive explainers for algorithms and data structures I've studied. Each one runs the real
+      algorithm in your browser. Change the parameters and watch what happens.
+    </p>
+
+    {
+      [...byCategory].map(([category, items]) => (
+        <section>
+          <h2>{category}</h2>
+          <div class="grid">
+            {items.map((v) => (
+              <Card href={`/visualize/${v.id}/`} title={v.data.title} description={v.data.description} tags={v.data.tags} />
+            ))}
+          </div>
+        </section>
+      ))
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    margin: 0.25rem 0 0.5rem;
+  }
+  .lede {
+    max-width: 40rem;
+  }
+  section {
+    margin-top: 2.5rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+    color: var(--text-2);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: 1rem;
+  }
+</style>
