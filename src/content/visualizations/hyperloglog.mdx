@@ -1,0 +1,51 @@
+---
+title: HyperLogLog
+description: Count distinct items in a stream of billions using a few kilobytes, by watching for unlikely runs of zeros in hashes.
+pubDate: 2026-09-20
+category: Probabilistic data structures
+tags: [hashing, cardinality, streaming]
+---
+
+import HyperLogLogViz from '../../components/viz/HyperLogLogViz.tsx';
+
+How many **unique** visitors hit your site today? The exact answer needs to remember every visitor
+ID. **HyperLogLog** gets within a couple of percent using a fixed, tiny amount of memory, no matter
+how many items stream through.
+
+## Try it
+
+Stream in distinct users and compare the estimate with the true count. Then add **duplicates**: the
+estimate doesn't move, because HyperLogLog only reacts to *new* items. Raise the precision `p` to
+trade memory for accuracy.
+
+<HyperLogLogViz client:visible initialPrecision={6} />
+
+## The intuition
+
+Hash each item to a random-looking 32-bit string. A hash starting with `1` happens half the time;
+one starting with `01` a quarter of the time; `0001` one time in sixteen. So if the **longest run of
+leading zeros** you've seen is `r`, you've probably seen around `2^r` distinct items.
+
+A single maximum like that is very noisy, since one lucky hash throws it off. HyperLogLog fixes this by:
+
+1. Using the first `p` bits of the hash to pick one of `m = 2^p` **registers** (buckets).
+2. In each register, storing the maximum rank (leading zeros + 1) seen in the *remaining* bits.
+3. Combining the registers with a **harmonic mean**, which dampens outliers:
+
+```
+E = α_m · m² / Σ 2^(−M[j])
+```
+
+With small counts, many registers are still empty and the formula is biased, so the implementation
+switches to *linear counting*, `m · ln(m / empty registers)`. That's why the estimate is
+excellent even for the first few hundred items.
+
+## Accuracy vs. memory
+
+The relative standard error is about `1.04 / √m`. Redis uses `p = 14` (16,384 registers × 6 bits ≈
+12 KB) for roughly 0.81% error on cardinalities into the billions.
+
+Registers from two sketches can be **merged** by taking the element-wise max, so you can count
+uniques per server and combine them later without double counting.
+
+> See `src/lib/algorithms/hyperLogLog.ts` for the full implementation.

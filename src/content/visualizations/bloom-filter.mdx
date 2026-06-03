@@ -1,0 +1,53 @@
+---
+title: Bloom Filter
+description: A bit array and a few hash functions that answer "have I seen this?" in constant space, occasionally lying, but only in one direction.
+pubDate: 2026-09-20
+category: Probabilistic data structures
+tags: [hashing, sets, space-efficient]
+---
+
+import BloomFilterViz from '../../components/viz/BloomFilterViz.tsx';
+
+A **Bloom filter** answers set-membership questions ("is `x` in the set?") using far less memory
+than storing the items themselves. The trade-off: it can say *probably yes* when the true answer is
+*no*. It never says *no* when the answer is *yes*.
+
+## Try it
+
+Add a few words, then check words you did and didn't add. Shrink `m` or add lots of items to watch
+false positives appear, or press **Find a false positive** to hunt for one.
+
+<BloomFilterViz client:visible initialSize={64} initialHashes={3} />
+
+## How it works
+
+The filter is an array of `m` bits, all starting at 0, plus `k` hash functions.
+
+- **Add `x`**: hash it `k` times and set each of those `k` bits to 1.
+- **Check `x`**: hash it the same way. If *any* of those bits is 0, `x` was **definitely never
+  added**, since adding it would have set that bit. If *all* are 1, `x` is **probably** in the set,
+  though those bits might have been set by other items.
+
+Bits are only ever set, never cleared, so a standard Bloom filter can't delete items. (Counting Bloom
+filters fix that by using small counters instead of bits.)
+
+## How often it lies
+
+After inserting `n` items, the probability a given bit is still 0 is about `e^(−kn/m)`, so the
+false-positive rate is roughly
+
+```
+p ≈ (1 − e^(−kn/m))^k
+```
+
+That rate is lowest when `k = (m/n) · ln 2`. More hash functions set more bits per insert, but also
+check more bits per lookup, and the balance between the two falls at that value.
+
+## Where it's used
+
+- Databases (Cassandra, RocksDB, Bigtable) skip disk reads for keys that definitely aren't in an SSTable.
+- Browsers once used them to check URLs against malware lists without shipping the whole list.
+- CDNs avoid caching "one-hit wonders" by only caching an object the second time it's requested.
+
+> Implementation note: this demo derives the `k` indexes from two MurmurHash3 values using
+> double hashing, `gᵢ(x) = h₁(x) + i·h₂(x) mod m`. See `src/lib/algorithms/bloomFilter.ts`.
