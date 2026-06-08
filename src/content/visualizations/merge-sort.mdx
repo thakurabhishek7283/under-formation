@@ -1,0 +1,57 @@
+---
+title: Merge Sort
+description: Split the array in half until every piece is trivially sorted, then zip sorted halves back together. Always O(n log n), and stable.
+pubDate: 2026-09-21
+category: Sorting
+tags: [divide and conquer, recursion, stable]
+---
+
+import SortingViz from '../../components/viz/SortingViz.tsx';
+
+Merge sort is the textbook **divide and conquer** algorithm. It rests on one idea: merging two lists
+that are *already sorted* is easy. Just keep taking the smaller of the two front items.
+
+## Try it
+
+Press **Play**, or step through with ◀ ▶ (arrow keys work once the controls have focus). Watch the
+buffer row: each merge copies a subarray aside, then two read heads, **L** and **R**, walk through
+the halves while the smaller item is written back.
+
+The panel beside the bars is the algorithm itself: the highlighted line is the one this step is
+running, and the chips under it are the variables at that moment, with anything that just changed
+outlined in orange. Stepping through `compare` → `write` a few times is the fastest way to see how
+the two read heads take turns.
+
+<SortingViz client:visible algorithm="merge" initialSize={16} />
+
+## How it works
+
+1. **Split**: cut `a[lo..hi]` at the middle.
+2. **Recurse**: sort each half. A piece of length 1 is already sorted.
+3. **Merge**: copy both halves to a buffer. Compare their front items, write the smaller one back,
+   and advance that side. When one side runs out, copy the rest of the other.
+
+The code panel above shows exactly this, and it's worth watching one detail: the recursion does
+*nothing* on the way down except split. All the work happens on the way back up, in `merge`.
+
+## Why O(n log n)
+
+The array halves at each level of recursion, so there are `log₂ n` levels. Every level does a total
+of `n` writes across all its merges. That's `n log₂ n` work, **regardless of the input**. Try
+*Reversed* and *Nearly sorted*: the comparison count barely changes.
+
+| | Merge sort |
+|---|---|
+| Time (best / average / worst) | O(n log n) / O(n log n) / O(n log n) |
+| Extra space | O(n) for the buffer |
+| Stable? | Yes: the `≤` takes from the left half on ties |
+
+## Where it's used
+
+- **Timsort** (Python, Java objects, V8's `Array.prototype.sort`) is merge sort plus insertion sort,
+  tuned to exploit runs that are already sorted.
+- **External sorting**: when data doesn't fit in memory, sort chunks and merge them from disk.
+  Merging only reads sequentially, which disks love.
+- Counting **inversions** in an array is a small extension of the merge step.
+
+> Implementation: `src/lib/algorithms/sorting.ts`, which records a step for every split, comparison and write.

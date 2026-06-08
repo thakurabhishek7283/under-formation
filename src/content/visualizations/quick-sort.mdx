@@ -1,0 +1,54 @@
+---
+title: Quick Sort
+description: Pick a pivot, move smaller items to its left, then recurse on each side. Fast in practice, but the pivot choice decides everything.
+pubDate: 2026-09-21
+category: Sorting
+tags: [divide and conquer, in-place, partitioning]
+---
+
+import SortingViz from '../../components/viz/SortingViz.tsx';
+
+Quick sort also divides and conquers, but does the hard work *before* recursing. It **partitions**
+the array around a pivot so the pivot lands in its final position, with smaller items on its left
+and larger ones on its right.
+
+## Try it
+
+The markers under the bars show the **pivot (P)**, the scan pointer **j**, and **i**, the boundary
+of the "smaller than pivot" region. Then try the experiment that makes quick sort famous: choose
+input **Nearly sorted** with pivot **Last element**, and compare the comparison count to the worst
+case. Then switch to **Median of three**.
+
+<SortingViz client:visible algorithm="quick" initialSize={16} />
+
+## Partitioning (Lomuto scheme)
+
+The code panel beside the bars highlights the line running at each step, with `i`, `j` and the
+pivot shown underneath. The **invariant** to hold on to while stepping through the loop is that
+everything in `a[lo..i-1]` is smaller than the pivot, and everything in `a[i..j-1]` is not. That is
+the entire trick: `i` only moves when something small is found, so when the scan ends, `i` is
+exactly where the pivot belongs.
+
+## The pivot is everything
+
+If the pivot splits the range roughly in half, there are `log₂ n` levels of `n` work each:
+**O(n log n)**. If the pivot is always the smallest or largest item, as with "last element" on
+sorted input, each partition peels off just one item, giving `n + (n−1) + … = n²/2` comparisons.
+
+Ways to dodge the worst case:
+
+- **Random pivot**: bad splits are possible but vanishingly unlikely on any input.
+- **Median of three**: use the median of the first, middle and last items. It fixes sorted and
+  reversed inputs cheaply.
+- **Introsort** (C++ `std::sort`): quick sort that switches to heap sort if recursion gets too deep.
+
+| | Quick sort |
+|---|---|
+| Time (best / average / worst) | O(n log n) / O(n log n) / O(n²) |
+| Extra space | O(log n) stack (in place otherwise) |
+| Stable? | No: long-distance swaps reorder equal items |
+
+Why use it over merge sort? It sorts **in place** and its inner loop is a tight, cache-friendly
+scan, so on real hardware it's usually the fastest general-purpose comparison sort.
+
+> Implementation: `src/lib/algorithms/sorting.ts`.
