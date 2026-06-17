@@ -1,0 +1,56 @@
+---
+title: Fenwick Tree
+description: Prefix sums with O(log n) updates using one array and a bit trick. Each index's lowest set bit decides which range it summarizes.
+pubDate: 2026-09-21
+category: Range queries
+tags: [bit manipulation, prefix sums, range queries]
+---
+
+import FenwickTreeViz from '../../components/viz/FenwickTreeViz.tsx';
+
+A **Fenwick tree** (or *binary indexed tree*) solves the same problem as a
+[segment tree](/visualize/segment-tree/) for sums: prefix sums and point updates, both in
+O(log n). It does it with a single array of `n` numbers and about five lines of code.
+
+## The one idea: `lowbit(i)`
+
+`lowbit(i) = i & −i` is the value of the lowest set bit of `i`. For example `lowbit(12) = lowbit(1100₂) = 4`.
+
+Cell `T[i]` stores the sum of the **`lowbit(i)` items ending at `i`**, i.e. `a(i − lowbit(i), i]`.
+Odd indices store one item; multiples of 4 store four; `T[16]` stores sixteen. In the diagram below,
+the underlined bit of each index is its lowbit, and each bar is the range that cell covers.
+
+## Try it
+
+Run a **prefix sum** and watch `i` hop *down*, stripping its lowest set bit each time
+(`13 → 12 → 8 → 0`). The bars it visits tile `[1..i]` exactly. Then run a **point add** and watch
+`i` hop *up* by adding its lowest set bit (`5 → 6 → 8 → 16`), touching exactly the bars that
+contain position `i`.
+
+<FenwickTreeViz client:visible initialSize={16} />
+
+## The whole implementation
+
+That's what the code panel beside the diagram shows, and it really is the whole thing: two loops
+of two lines. One strips the lowest set bit, the other adds it, and
+`rangeSum(l, r) = prefixSum(r) − prefixSum(l − 1)`. Both loops change one bit of `i` per iteration,
+so each runs at most `log₂ n + 1` times.
+
+The variable chips make the bit trick concrete: `i` is shown in binary next to its decimal value,
+so you can watch a single bit disappear (prefix sum) or carry upward (point add) on each step.
+
+## Fenwick vs. segment tree
+
+| | Fenwick tree | Segment tree |
+|---|---|---|
+| Memory | n | ~2n–4n |
+| Code | ~10 lines | ~40 lines |
+| Prefix / range sum | O(log n) | O(log n) |
+| Range min / max | ✗ (not invertible) | ✓ |
+| Range updates | with a second tree | with lazy propagation |
+
+The catch is visible in `rangeSum`: it *subtracts* two prefixes, which works for sums (and XOR)
+but not for min or max. When you need those, use a segment tree.
+
+> Indices are 1-based. That's what makes the bit trick work, since `lowbit(0)` would be 0.
+> Implementation: `src/lib/algorithms/fenwickTree.ts`.

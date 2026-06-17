@@ -1,0 +1,61 @@
+---
+title: Segment Tree
+description: A binary tree of precomputed range answers. Any range sum, min or max in O(log n), with point updates to match.
+pubDate: 2026-09-21
+category: Range queries
+tags: [trees, divide and conquer, range queries]
+---
+
+import SegmentTreeViz from '../../components/viz/SegmentTreeViz.tsx';
+
+You have an array that keeps changing, and you keep asking "what's the sum (or min, or max) of
+`a[l..r]`?" A plain array answers in O(n); a prefix-sum array answers in O(1) but needs O(n) to
+update. A **segment tree** does both in **O(log n)**.
+
+## Try it
+
+The panel beside the tree is the running code: the highlighted line is the one the current step is
+executing, and the chips below it are that call's arguments — `id`, `l`, `r` — so you can read the
+recursion as a sequence of calls rather than a blur of colours. It switches listing with the
+operation: build, query, update.
+
+Run a query and watch which nodes are visited. Blue nodes partly overlap the range, so the search
+splits there. Green nodes lie entirely inside it, so their stored answer is used as-is and nothing
+below them is visited. Then run an update: one path down, then one recompute per level back up.
+Switch the aggregate to **min** or **max**; the tree shape and the algorithm don't change.
+
+<SegmentTreeViz client:visible initialSize={8} />
+
+## Structure
+
+- The root covers the whole array `[0..n−1]`.
+- A node covering `[l..r]` has children covering `[l..mid]` and `[mid+1..r]`.
+- Leaves cover a single element. Each node stores `combine(left child, right child)`.
+
+Stored in a flat array, node `k` has children `2k` and `2k+1`. That's why `4n` slots always suffice.
+
+## Query
+
+A query is three cases, and the code panel beside the tree shows which one each visited node took:
+**no overlap** (skip it and everything under it), **fully inside** (take the stored value and stop),
+or **partial** (split, and ask both children). The whole algorithm is those three lines.
+
+Why O(log n)? At each depth, at most **two** nodes partly overlap the query range: the ones that
+contain its left and right edges. Everything between them is either fully inside or fully outside.
+So each level contributes a constant number of visits.
+
+## Update
+
+Walk from the root to the leaf for index `i`, set it, then recompute each ancestor on the way back
+up. That's one node per level: O(log n).
+
+| Operation | Plain array | Prefix sums | Segment tree |
+|---|---|---|---|
+| Range query | O(n) | O(1) | O(log n) |
+| Point update | O(1) | O(n) | O(log n) |
+| Works for min/max | ✓ | ✗ | ✓ |
+
+The combine function just needs to be **associative**: sum, min, max, gcd, product, matrix
+multiplication… Add *lazy propagation* and you get O(log n) **range** updates too.
+
+> Implementation: `src/lib/algorithms/segmentTree.ts`. Compare it with the [Fenwick tree](/visualize/fenwick-tree/).
