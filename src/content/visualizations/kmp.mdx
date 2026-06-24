@@ -1,0 +1,61 @@
+---
+title: KMP String Search
+description: Find a pattern in text without ever re-reading a character. A precomputed prefix table says how far to slide after a mismatch.
+pubDate: 2026-09-21
+category: String algorithms
+tags: [strings, pattern matching, prefix function]
+---
+
+import KmpViz from '../../components/viz/KmpViz.tsx';
+
+The brute-force way to find a pattern in a text is to try every starting position and compare
+character by character. On inputs like `AAAAAAAAB` / `AAAB`, each attempt almost succeeds before
+failing, so it does O(n·m) work. **Knuth–Morris–Pratt** does it in **O(n + m)** by never
+moving backwards in the text.
+
+## Try it
+
+The first phase builds the prefix table **π** from the pattern alone. The second scans the text.
+Watch the text pointer: it only ever moves right. On a mismatch the *pattern* slides forward, by
+an amount π tells it. Pick the **Repetitive** preset to see the gap to brute force widen.
+
+<KmpViz client:visible />
+
+## The prefix table
+
+`π[i]` is the length of the longest **proper prefix** of `p[0..i]` that is also a **suffix** of it
+(its longest "border").
+
+For `ABABCABAB`: `π = [0, 0, 1, 2, 0, 1, 2, 3, 4]`. At `i = 8` the text so far, `ABABCABAB`, ends
+with `ABAB`, which is also how the pattern starts.
+
+## Why it's safe to slide
+
+Suppose we've matched `j` pattern characters and then hit a mismatch. We know the last `j` text
+characters equal `p[0..j−1]`. The next alignment that could possibly match must start with a
+prefix of the pattern that's also a suffix of what we just matched, and the longest such is
+`π[j−1]`. So we set `j = π[j−1]` and compare again, **without moving the text pointer**.
+
+That is the `while` line in the code panel above. Step onto it and compare the two variable chips:
+`i` is unchanged from the previous step, while `j` drops. Every mismatch costs a shrink of `j`,
+never a rewind of `i`.
+
+Building π is the same algorithm run on the pattern against itself, which is what phase 1 shows —
+switch between the phases and note that the two listings have the same shape.
+
+## Complexity
+
+Each comparison either advances `i` or shrinks `j`, and `j` can't shrink more than it has grown.
+So there are at most `2n` comparisons for the search and `2m` for the table: **O(n + m)** total,
+with O(m) extra space.
+
+| | Brute force | KMP |
+|---|---|---|
+| Worst case | O(n · m) | O(n + m) |
+| Re-reads text? | Yes | Never |
+| Preprocessing | None | O(m) prefix table |
+
+The prefix function is useful beyond search: finding a string's period, counting occurrences of
+each prefix, and it's the core of the Aho–Corasick automaton for matching many patterns at once.
+
+> Implementation: `src/lib/algorithms/kmp.ts`.
