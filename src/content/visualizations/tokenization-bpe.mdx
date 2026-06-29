@@ -1,0 +1,54 @@
+---
+title: Tokenization (BPE)
+description: How LLMs turn text into integers. Byte-pair encoding learns a vocabulary by repeatedly merging the most frequent pair of symbols.
+pubDate: 2026-09-22
+category: How LLMs work
+tags: [tokenization, BPE, LLM]
+---
+
+import BpeViz from '../../components/viz/ml/BpeViz.tsx';
+
+A language model never sees letters or words. It sees **tokens**: integers that index into a fixed
+vocabulary. Nearly every modern LLM (GPT-2 through GPT-4, Llama, Mistral) builds that vocabulary with
+**byte-pair encoding (BPE)**.
+
+## Try it
+
+Step through training. Each step finds the most frequent adjacent pair in the corpus and fuses it
+into a new token. Watch common words collapse into single tokens while rare ones stay in pieces.
+Then type into the box at the bottom: new text is tokenized with the merges learned *so far*.
+
+<BpeViz client:visible />
+
+## The algorithm
+
+**Training:**
+
+1. Start with a vocabulary of single characters (production tokenizers start from the 256 byte
+   values, so any input can be encoded).
+2. Count every adjacent pair of symbols across the corpus, weighted by word frequency.
+3. Merge the most frequent pair into a new symbol and add it to the vocabulary.
+4. Repeat until the vocabulary reaches its target size.
+
+**Encoding** new text replays the merges in the order they were learned. The merge list *is* the
+tokenizer.
+
+## Why not characters or words?
+
+| Unit | Vocabulary | Sequence length | Unknown words |
+|---|---|---|---|
+| Characters | tiny | very long (costly attention) | never |
+| Words | huge (every inflection) | short | constantly |
+| **BPE subwords** | tunable, e.g. 32k–200k | short | never (falls back to pieces) |
+
+Frequent strings like `▁the` become one token; rare words split into meaningful pieces
+(`▁un` `believ` `able`). GPT-2's vocabulary has 50,257 tokens; Llama 3's has 128,256.
+
+## Side effects you can see in real models
+
+- **Counting letters is hard**: the model sees `▁strawberry` as one or two tokens, not ten letters.
+- **Arithmetic is awkward**: numbers split inconsistently (`1234` vs `12` `34`).
+- **Languages are billed unequally**: text in languages under-represented in the tokenizer's
+  training data takes more tokens for the same meaning, so it costs more and uses up context faster.
+
+> Implementation: `src/lib/ml/bpe.ts`. The `▁` marks a word start, as in SentencePiece.

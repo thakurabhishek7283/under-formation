@@ -1,0 +1,58 @@
+---
+title: Self-Attention
+description: The core of the transformer. Every token scores every other token, turns the scores into weights with softmax, and takes a weighted average.
+pubDate: 2026-09-22
+category: How LLMs work
+tags: [attention, transformer, LLM]
+---
+
+import AttentionViz from '../../components/viz/ml/AttentionViz.tsx';
+
+Self-attention is how a token gathers information from the rest of the sequence. It is one formula:
+
+```
+Attention(Q, K, V) = softmax( QKᵀ / √d  +  mask ) · V
+```
+
+## Try it
+
+The four heads below run the real formula. Instead of random weights, three of them have
+hand-built weights that make each one do a single recognizable job. Heads like these have been
+found in trained models. Click a row label to pick a query token, and compare the heads.
+
+<AttentionViz client:visible />
+
+## Step by step
+
+Every token's embedding `x` is projected three ways by learned matrices:
+
+- **Query** `q = x·W_q`: what this token is looking for.
+- **Key** `k = x·W_k`: what this token offers to others.
+- **Value** `v = x·W_v`: what it passes along if selected.
+
+Then, for each query token *i*:
+
+1. **Score** every key: `sᵢⱼ = qᵢ · kⱼ / √d`. Dividing by `√d` stops dot products growing with
+   dimension, which would otherwise push softmax into near one-hot outputs with vanishing gradients.
+2. **Mask**: in a decoder (GPT, Llama), token *i* may not look at tokens after it. Setting those
+   scores to `−∞` makes their weights exactly 0. That's what lets the model train on every
+   position of a sentence in parallel without cheating.
+3. **Softmax** each row into weights that are positive and sum to 1.
+4. **Mix**: the output is `Σⱼ wᵢⱼ · vⱼ`, a weighted average of values.
+
+## Multi-head attention
+
+One softmax can only express one "where to look" pattern per token. Transformers run `h` heads in
+parallel, each with its own `W_q, W_k, W_v` in a smaller dimension `d/h`, then concatenate the
+outputs and mix them with `W_o`. Switch to **All heads** above: the same sentence, four different
+relationships, computed at once.
+
+## Cost
+
+The score matrix is `n × n`, so attention costs **O(n²)** in sequence length, in both time and
+(naively) memory. That quadratic cost is why context length is expensive and why techniques like
+FlashAttention (computing attention in tiles without materializing the matrix) and the
+[KV cache](/visualize/kv-cache/) matter so much in practice.
+
+> Implementation: `src/lib/ml/attention.ts`. The embedding holds word-class, word-identity and
+> position features, so each hand-built head can target one of them.

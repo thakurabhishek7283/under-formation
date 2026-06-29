@@ -1,0 +1,1098 @@
+/* Styles for the ML visualizations (builds on ../viz.css). */
+
+/* ---------- Heatmap ---------- */
+.viz-heat {
+  display: grid;
+  gap: 2px;
+  align-items: center;
+  width: max-content;
+}
+.viz-heat-col {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-3);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: 4.5rem;
+  justify-self: center;
+}
+.viz-heat-row {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-2);
+  background: none;
+  border: 0;
+  padding: 0 0.4rem 0 0;
+  text-align: right;
+  white-space: nowrap;
+}
+button.viz-heat-row {
+  cursor: pointer;
+  border-radius: 4px;
+}
+button.viz-heat-row:hover {
+  color: var(--text);
+}
+.viz-heat-row.selected {
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+.viz-heat-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  position: relative;
+}
+.viz-heat-cell.masked {
+  background: repeating-linear-gradient(45deg, var(--surface-2) 0 3px, transparent 3px 6px);
+}
+.viz-heat-cell[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.72rem;
+  pointer-events: none;
+  z-index: 4;
+}
+.viz-heat-cell:hover {
+  outline: 2px solid var(--text);
+  z-index: 3;
+}
+.viz-scale {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-top: 0.4rem;
+}
+.viz-scale-bar {
+  width: 7rem;
+  height: 0.55rem;
+  border-radius: 3px;
+}
+
+/* ---------- Line chart ---------- */
+.viz-line {
+  display: grid;
+  gap: 0.4rem;
+}
+.viz-line-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: none;
+}
+.viz-line-svg .grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.viz-line-svg .axis {
+  stroke: var(--text-3);
+  stroke-width: 1;
+}
+.viz-line-svg .tick,
+.viz-line-svg .end-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--text-3);
+}
+.viz-line-svg .end-label {
+  fill: var(--text-2);
+}
+.viz-line-svg .crosshair {
+  stroke: var(--text-3);
+  stroke-dasharray: 3 3;
+}
+.viz-line-tip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  min-height: 1.3rem;
+}
+.viz-line-tip .sw,
+.viz-opt-list .sw {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+/* ---------- Tokens / chips ---------- */
+.viz-tok {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: pre;
+}
+.viz-tok.small {
+  font-size: 0.72rem;
+  padding: 0.05rem 0.35rem;
+}
+.viz-tok.merged {
+  border-color: color-mix(in srgb, var(--role-compare) 45%, var(--border));
+}
+.viz-tok.new {
+  border-color: var(--role-change);
+  background: color-mix(in srgb, var(--role-change) 18%, var(--surface));
+}
+.viz-tok.unk {
+  border-style: dashed;
+  color: var(--text-3);
+}
+.viz-tok sub {
+  font-size: 0.6rem;
+  color: var(--text-3);
+}
+.viz-bpe-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+}
+.viz-bpe-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.viz-bpe-word small {
+  margin-left: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-3);
+}
+.viz-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 1.05rem;
+}
+textarea.input {
+  resize: vertical;
+  font-size: 0.85rem;
+}
+
+/* ---------- Segmented controls / checkbox ---------- */
+.viz-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+}
+.viz-seg .btn {
+  border-radius: 0;
+  margin-left: -1px;
+}
+.viz-seg .btn:first-child {
+  border-radius: 8px 0 0 8px;
+  margin-left: 0;
+}
+.viz-seg .btn:last-child {
+  border-radius: 0 8px 8px 0;
+}
+.viz-seg .btn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  position: relative;
+  z-index: 1;
+}
+.viz-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+.viz-check input {
+  accent-color: var(--accent);
+}
+
+/* ---------- Horizontal bars ---------- */
+.viz-bars-h {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.viz-bars-h li {
+  display: grid;
+  grid-template-columns: minmax(5rem, max-content) minmax(4rem, 1fr) minmax(4.5rem, max-content);
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+}
+.viz-bars-h.compact {
+  gap: 0.15rem;
+}
+.viz-bars-h.compact li {
+  font-size: 0.75rem;
+}
+.viz-bars-h .k {
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.viz-bars-h .bar {
+  height: 0.8rem;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.viz-bars-h .bar > span {
+  display: block;
+  height: 100%;
+  background: var(--role-compare);
+  border-radius: 0 3px 3px 0;
+  transition: width 0.2s;
+}
+.viz-bars-h .v {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- Attention ---------- */
+.viz-attn-grid,
+.viz-attn-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem;
+}
+.viz-attn-grid figure,
+.viz-multiples figure,
+.viz-kv figure,
+.viz-lora figure,
+.viz-tf-tensor {
+  margin: 0;
+  min-width: 0;
+}
+.viz-attn-grid figcaption,
+.viz-kv figcaption,
+.viz-lora figcaption,
+.viz-tf-tensor figcaption {
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+.viz-multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+.viz-multiples figure {
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+.viz-multiples figure.on {
+  border-color: var(--accent);
+}
+.viz-multiple-title {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: none;
+  border: 0;
+  padding: 0 0 0.4rem;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* ---------- Transformer ---------- */
+.viz-tf {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 1.25rem;
+}
+@media (max-width: 640px) {
+  .viz-tf {
+    grid-template-columns: 1fr;
+  }
+}
+.viz-tf-diagram {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.viz-tf-diagram li button {
+  width: 100%;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--kind);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+}
+.viz-tf-diagram li.in-block {
+  margin-left: 0.6rem;
+}
+.viz-tf-diagram li.done button {
+  color: var(--text);
+}
+.viz-tf-diagram li.on button {
+  background: color-mix(in srgb, var(--kind) 18%, var(--surface));
+  color: var(--text);
+  font-weight: 700;
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+.viz-tf-body {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-width: 0;
+}
+.viz-tf-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.viz-tf-head h4 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* ---------- Sampling table ---------- */
+.viz-dist {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.viz-dist th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.viz-dist td {
+  padding: 0.22rem 0.5rem;
+}
+.viz-dist .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.viz-dist .mono {
+  font-family: var(--font-mono);
+}
+.viz-dist .bar-col {
+  width: 55%;
+  min-width: 12rem;
+}
+.viz-dist td.bar-col {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.viz-dist-bar {
+  position: relative;
+  flex: 1;
+  height: 0.85rem;
+}
+.viz-dist-bar .base,
+.viz-dist-bar .final {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 0 3px 3px 0;
+  transition: width 0.2s;
+}
+.viz-dist-bar .base {
+  background: var(--border);
+}
+.viz-dist-bar .final {
+  background: var(--role-compare);
+  top: 2px;
+  bottom: 2px;
+}
+.viz-dist-val {
+  width: 6.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.viz-dist tr.cut td {
+  opacity: 0.45;
+}
+
+/* ---------- KV cache ---------- */
+.viz-kv {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* ---------- Optimizers ---------- */
+.viz-opt {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(14rem, 2fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .viz-opt {
+    grid-template-columns: 1fr;
+  }
+}
+.viz-opt-plot {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.viz-opt-plot canvas,
+.viz-opt-plot svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.viz-opt-plot svg {
+  cursor: crosshair;
+}
+.viz-opt-min path {
+  stroke: var(--text);
+  stroke-width: 2.5;
+}
+.viz-opt-side {
+  display: grid;
+  gap: 0.75rem;
+}
+.viz-opt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+.viz-opt-list li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.viz-opt-list .sw {
+  margin-top: 0.3rem;
+  flex: none;
+}
+.viz-opt-list code {
+  font-size: 0.72rem;
+}
+.viz-opt-list .mono {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+/* ---------- LoRA ---------- */
+.viz-lora {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.viz-lora-op {
+  font-size: 1.4rem;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
+.viz-lora-bottom {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1.25rem;
+}
+
+/* ---------- Quantization ---------- */
+.viz-quant {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(12rem, 2fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .viz-quant {
+    grid-template-columns: 1fr;
+  }
+}
+.viz-hist,
+.viz-stair {
+  margin: 0 0 0.6rem;
+}
+.viz-hist svg,
+.viz-stair svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+.viz-hist-zero {
+  stroke: var(--text-3);
+  stroke-dasharray: 3 3;
+}
+
+/* Tables inside visualizations don't take the article table borders. */
+.viz .viz-dist th,
+.viz .viz-dist td {
+  border: 0;
+}
+.viz .viz-dist th {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Two charts side by side when there's room, stacked when there isn't. */
+.viz-pair {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+}
+.viz-pair figure {
+  margin: 0;
+  min-width: 0;
+}
+
+/* One line of context under the controls, e.g. what the chosen dataset is for. */
+.viz-note {
+  margin: -0.5rem 0 0;
+  font-size: 0.88rem;
+  color: var(--text-2);
+}
+
+/* ---------- Convolution ---------- */
+.viz-conv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+.viz-conv figure {
+  margin: 0;
+  min-width: 0;
+}
+.viz-conv-kernel {
+  align-self: center;
+}
+.viz-kernel-grid {
+  display: grid;
+  gap: 3px;
+}
+.viz-kernel-cell {
+  width: 2.6rem;
+  padding: 0.3rem 0.15rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  -moz-appearance: textfield;
+}
+.viz-kernel-cell::-webkit-outer-spin-button,
+.viz-kernel-cell::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* The 9 multiply-accumulate terms behind one output cell. */
+.viz-mac {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.viz-mac-term,
+.viz-mac-sum {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  text-align: center;
+}
+.viz-mac-term em {
+  font-style: normal;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.viz-mac-term[data-null] {
+  opacity: 0.55;
+}
+.viz-mac-sum {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.viz-mac-sum em {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+
+/* Coefficient bars: magnitude per polynomial power. */
+.viz-coefs {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 9rem;
+  padding-top: 0.5rem;
+}
+.viz-coef {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  height: 100%;
+  min-width: 0;
+}
+.viz-coef-bar {
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+}
+.viz-coef-label {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-3);
+  padding-top: 2px;
+}
+
+/* ---------- Confusion matrix ---------- */
+.viz-cm {
+  display: grid;
+  grid-template-columns: max-content 1fr 1fr;
+  gap: 4px;
+  align-items: stretch;
+}
+.viz-cm-head {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  align-self: end;
+  padding-bottom: 0.2rem;
+}
+.viz-cm-head.side {
+  align-self: center;
+  text-align: right;
+  padding-right: 0.4rem;
+}
+.viz-cm-cell {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.viz-cm-cell strong {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+.viz-cm-cell em {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+.viz-cm-pct {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+/* Correct vs mistaken, marked by an edge rather than a fill, and always also named in words. */
+.viz-cm-cell.good {
+  border-left: 3px solid var(--good);
+}
+.viz-cm-cell.bad {
+  border-left: 3px solid var(--critical);
+}
+
+/* Rotation wheels: one per RoPE dimension pair. */
+.viz-wheels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+.viz-wheels figure {
+  margin: 0;
+  min-width: 0;
+}
+.viz-wheels figcaption {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-3);
+}
+
+/* Three panels across when there's room. */
+.viz-trio {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  align-items: start;
+}
+.viz-trio > figure {
+  margin: 0;
+  min-width: 0;
+}
+
+/* Axis labels in HTML rather than inside the SVG, so their size doesn't scale with the viewBox. */
+.viz-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  padding-top: 0.3rem;
+}
+.viz-axis-x,
+.viz-axis-y {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+.viz-axis-x {
+  text-align: center;
+  padding-top: 0.25rem;
+}
+.viz-axis-y {
+  padding-bottom: 0.15rem;
+}
+
+/* ---------- Classifier decision maps ---------- */
+/* A canvas (predicted class, tinted by confidence) under an SVG of the samples, both square. */
+.viz-map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.viz-map canvas,
+.viz-map svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.viz-map svg {
+  touch-action: none;
+}
+.viz-map-mini {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  min-width: 0;
+}
+.viz-map-mini figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+.viz-map-mini figcaption strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.viz-minis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.75rem;
+}
+/* Vote tallies: one bar per class. */
+.viz-votes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.viz-votes li {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(4rem, 1fr) 4.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+.viz-votes .bar {
+  height: 0.8rem;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.viz-votes .bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  transition: width 0.2s;
+}
+.viz-votes .v {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.viz-votes li.win {
+  font-weight: 700;
+}
+
+/* Log-likelihood-ratio bars: centred, ham to the left, spam to the right. */
+.viz-llr li {
+  grid-template-columns: minmax(3.5rem, max-content) minmax(5rem, 1fr) minmax(5.5rem, max-content);
+}
+.viz-llr .v {
+  white-space: normal;
+}
+.viz-llr .bar.llr {
+  position: relative;
+  display: flex;
+  background: linear-gradient(90deg, transparent calc(50% - 0.5px), var(--text-3) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    var(--surface-2);
+}
+.viz-llr .bar.llr > span {
+  flex: none;
+}
+.viz-llr small {
+  display: block;
+  font-size: 0.7rem;
+}
+
+/* ---------- CNN digit recognizer ---------- */
+.viz-cnn-top {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  align-items: start;
+}
+.viz-pad {
+  display: block;
+  width: 100%;
+  max-width: 17rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(var(--border), var(--border)) center / 100% 1px no-repeat,
+    linear-gradient(var(--border), var(--border)) center / 1px 100% no-repeat,
+    var(--surface-2);
+  touch-action: none;
+  cursor: crosshair;
+}
+.viz-cnn-io {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: max-content minmax(10rem, 1fr);
+  align-items: start;
+}
+@media (max-width: 30rem) {
+  .viz-cnn-io {
+    grid-template-columns: 1fr;
+  }
+}
+.viz-cnn-io figure {
+  margin: 0;
+}
+.viz-matrix {
+  display: block;
+  image-rendering: pixelated;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.viz-votes.viz-digits {
+  gap: 0.15rem;
+}
+.viz-votes.viz-digits li {
+  grid-template-columns: 1.2rem minmax(4rem, 1fr) 3.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.viz-cnn-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  gap: 0.75rem;
+}
+.viz-cnn-filters figure {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.viz-cnn-filters figcaption {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-bottom: 0.35rem;
+}
+.viz-cnn-chain {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-3);
+}
+.viz-cnn-samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.viz-cnn-samples button {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+.viz-cnn-samples button:hover {
+  border-color: var(--accent);
+}
+.viz-cnn-samples .ok {
+  color: var(--good);
+}
+.viz-cnn-samples .bad {
+  color: var(--critical);
+  font-weight: 700;
+}
+.viz-cnn-train {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- Neural network playground ---------- */
+.viz-nn {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (min-width: 56rem) {
+  .viz-nn {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+}
+.viz-nn figure {
+  margin: 0;
+  min-width: 0;
+}
+
+/* ---------- Classifier comparison grid ---------- */
+.viz .viz-zoo {
+  border-collapse: separate;
+  border-spacing: 0.4rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.viz .viz-zoo th,
+.viz .viz-zoo td {
+  border: 0;
+  padding: 0;
+  vertical-align: middle;
+}
+.viz-zoo thead th {
+  font-weight: 500;
+  color: var(--text-3);
+  font-size: 0.75rem;
+  text-align: center;
+}
+.viz-zoo tbody th {
+  text-align: right;
+  font-weight: 600;
+  padding-right: 0.3rem;
+  white-space: nowrap;
+}
+.viz-zoo tbody th a {
+  color: var(--text);
+}
+.viz-zoo tbody th small {
+  display: block;
+  font-weight: 400;
+  color: var(--text-3);
+  font-size: 0.7rem;
+}
+.viz-zoo td {
+  position: relative;
+  width: 6.5rem;
+  min-width: 6.5rem;
+}
+.viz-zoo td .acc {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+  opacity: 0.92;
+}
+.viz-minis.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 32rem) {
+  .viz-minis.four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.viz-minis.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+@media (max-width: 40rem) {
+  .viz-minis.three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
