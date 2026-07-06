@@ -1,0 +1,57 @@
+---
+title: Transformer Block
+description: "Follow a sentence through a real (tiny) GPT-style transformer: embeddings, positions, LayerNorm, attention, residuals, MLP, and the next-token distribution."
+pubDate: 2026-09-22
+category: How LLMs work
+tags: [transformer, architecture, LLM]
+---
+
+import TransformerViz from '../../components/viz/ml/TransformerViz.tsx';
+
+Every GPT-style model is the same block stacked many times. This page runs a complete forward pass
+through one block with `d_model = 16`, 2 attention heads and a 64-wide MLP, and shows every tensor
+along the way.
+
+## Try it
+
+Step through the stages, or click any box in the diagram. Blue cells are positive, red negative.
+Hover any cell for its value. Change the input and watch everything update.
+
+<TransformerViz client:visible />
+
+## The block, in six lines
+
+```python
+x = embed[tokens] + position                 # [T, d]  the residual stream
+for block in blocks:
+    x = x + attention(layernorm(x))          # tokens exchange information
+    x = x + mlp(layernorm(x))                # each token processes it alone
+logits = layernorm(x) @ embed.T              # [T, vocab]
+next_token_probs = softmax(logits[-1])
+```
+
+## Ideas worth noticing
+
+**The residual stream.** Sub-layers never replace `x`; they *add* to it. Each layer reads the
+stream, computes a small edit, and writes it back. That lets gradients flow straight through dozens
+of layers, and it's why interpretability research treats the stream as a shared workspace.
+
+**Attention moves, the MLP computes.** Attention is the only place tokens interact. The MLP runs
+the same function on every token independently. It holds roughly two-thirds of the parameters
+(8d² vs 4d² per layer) and is thought to store much of the model's factual knowledge.
+
+**Pre-LayerNorm.** Normalizing *before* each sub-layer, rather than after as in the original 2017
+paper, is what made very deep transformers train stably. It's the GPT-2-and-later convention.
+
+**Shapes never change.** Every block maps `[T × d]` to `[T × d]`, so you can stack as many as you
+can afford: 12 in GPT-2 small, 32 in Llama 3 8B, 80 in Llama 3 70B.
+
+## What modern models change
+
+The skeleton above is the same in Llama, Mistral and Qwen. They swap in a few upgrades:
+**RMSNorm** instead of LayerNorm, **RoPE** (rotating Q and K by position) instead of added positional
+encodings, a **SwiGLU** MLP instead of GELU, and **grouped-query attention** to shrink the
+[KV cache](/visualize/kv-cache/).
+
+> Implementation: `src/lib/ml/transformer.ts`. The weights are random (seeded), so the prediction at
+> the end is meaningless. Training is what turns this exact computation into a language model.

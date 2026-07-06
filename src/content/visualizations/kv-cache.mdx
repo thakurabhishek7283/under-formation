@@ -1,0 +1,51 @@
+---
+title: KV Cache
+description: Why LLM inference stores the keys and values of every previous token, how much work it saves, and why it dominates GPU memory at long context.
+pubDate: 2026-09-22
+category: How LLMs work
+tags: [inference, attention, memory, LLM]
+---
+
+import KvCacheViz from '../../components/viz/ml/KvCacheViz.tsx';
+
+LLMs generate one token at a time, and each new token attends to every token before it. The keys and
+values of those earlier tokens never change, because the causal mask means a token's K and V depend
+only on the tokens before it. So instead of recomputing them at every step, inference engines
+compute each one **once** and keep it in a **KV cache**.
+
+## Try it
+
+Step through generation with the cache on, then off. Orange outlines mark the K/V rows computed at
+each step. With the cache, that's one row per step; without it, the whole prefix is redone every time.
+
+<KvCacheViz client:visible />
+
+## Prefill and decode
+
+Serving an LLM has two phases with very different profiles:
+
+- **Prefill**: the whole prompt goes through the model in one parallel pass, filling the cache.
+  Lots of matrix multiplication; compute-bound. Its latency is the "time to first token".
+- **Decode**: one token per step. Each step computes a single new K/V row, but must **read the
+  entire cache** (and all the weights) from GPU memory. Memory-bandwidth-bound; its speed is the
+  "tokens per second".
+
+## The memory bill
+
+```
+KV cache bytes = 2 × layers × kv_heads × head_dim × bytes_per_value × tokens × batch
+```
+
+For Llama 2 7B at fp16 that's 0.5 MB **per token**: 2 GB for a 4,096-token conversation, more than
+10% of the model's own 13.5 GB of weights. At long context and large batch sizes, the cache, not
+the weights, decides how many users fit on a GPU. Hence the tricks:
+
+- **Grouped-query attention (GQA)**: several query heads share one K/V head. Llama 3 8B uses 8 KV
+  heads for 32 query heads, a 4× smaller cache. Try it in the calculator above.
+- **Quantized caches**: store K/V in 8-bit (or less) instead of 16.
+- **PagedAttention** (vLLM): allocate the cache in fixed-size pages, like OS virtual memory, so
+  memory isn't wasted on fragmentation and reservations.
+- **Prompt caching**: reuse the cache for a shared prefix (like a long system prompt) across requests.
+
+> Implementation: `src/lib/ml/kvCache.ts`. The K/V values in the demo are deterministic stand-ins;
+> the memory numbers use each model's real configuration.
