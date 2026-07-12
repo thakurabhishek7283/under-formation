@@ -1,0 +1,50 @@
+---
+title: Backpropagation
+description: How a network learns which way to adjust every weight. Forward pass through a computational graph, then the chain rule, applied backwards, node by node.
+pubDate: 2026-09-22
+category: Training neural networks
+tags: [backpropagation, autodiff, gradients]
+---
+
+import BackpropViz from '../../components/viz/ml/BackpropViz.tsx';
+
+Training means nudging every weight to reduce a loss. To know *which way* to nudge, we need the
+gradient `∂L/∂w` for every weight. A model can have billions of them. **Backpropagation**
+computes all of them in one backward sweep that costs about the same as the forward pass.
+
+## Try it
+
+Here is one neuron, `o = tanh(x₁w₁ + x₂w₂ + b)`, with a squared-error loss `L = (o − y)²`. Step
+through the forward pass (blue), then the backward pass (orange), where each node hands its
+gradient to its inputs. Then take gradient steps and watch the loss fall.
+
+<BackpropViz client:visible />
+
+## The chain rule, locally
+
+Each node only needs to know its **local derivative**, meaning how its output changes with each of its
+inputs:
+
+| Node | Local derivatives |
+|---|---|
+| `a + b` | 1, 1: addition passes the gradient through unchanged |
+| `a × b` | b, a: each input's gradient is scaled by the *other* input |
+| `tanh(n)` | 1 − tanh²(n) |
+| `d²` | 2d |
+
+The backward pass starts with `∂L/∂L = 1` and walks the graph in reverse topological order. At each
+node: `∂L/∂input += ∂L/∂node × local derivative`. The `+=` matters: if a value feeds several
+places, the gradients from each path add up.
+
+## Why it scales
+
+Computing each weight's gradient separately (for example by nudging it and re-running the network)
+would cost one forward pass *per weight*. Reverse-mode differentiation shares all the intermediate
+work: one forward pass, one backward pass, all gradients. Every deep-learning framework (PyTorch,
+JAX, TensorFlow) implements exactly this. It records the graph as you compute, then runs
+`.backward()`.
+
+The update itself is plain gradient descent: `w ← w − η · ∂L/∂w`. Set η too high above and watch the
+loss bounce; how to choose the step well is what [optimizers](/visualize/gradient-descent/) are about.
+
+> Implementation: `src/lib/ml/autograd.ts`. Its gradients are tested against finite differences.

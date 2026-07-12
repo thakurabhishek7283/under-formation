@@ -1,0 +1,52 @@
+---
+title: Gradient Descent, Momentum & Adam
+description: Race three optimizers across loss landscapes. See why plain SGD zig-zags, how momentum builds speed, and why Adam trains nearly every LLM.
+pubDate: 2026-09-22
+category: Training neural networks
+tags: [optimization, SGD, Adam]
+---
+
+import OptimizerViz from '../../components/viz/ml/OptimizerViz.tsx';
+
+[Backpropagation](/visualize/backpropagation/) says which way is downhill. The **optimizer** decides
+how far to step, and in which direction exactly. Loss landscapes are full of long narrow valleys, so
+that choice matters a lot.
+
+## Try it
+
+Pick a surface and press **Run**. Darker bands are higher loss; × marks the minima. Click anywhere on
+the surface to restart all three optimizers from that point, and drag the learning rate to find
+where each one breaks.
+
+<OptimizerViz client:visible />
+
+## Three update rules
+
+**SGD** steps straight down the gradient: `θ ← θ − η·g`. In a narrow valley the gradient points
+mostly *across* the valley, so SGD bounces between the walls while crawling along the floor. Raise
+η to go faster along the floor and it diverges across it.
+
+**Momentum** keeps a running velocity: `v ← βv + g`, `θ ← θ − η·v`. Oscillations across the valley
+cancel out, while the consistent push along it accumulates, like a ball rolling downhill. With
+β = 0.9 it effectively averages the last ~10 gradients.
+
+**Adam** combines momentum with a per-parameter scale: it tracks the average gradient `m` and the
+average *squared* gradient `v`, and steps by `m / √v`. Steep directions get small steps and flat
+directions get large ones, so every parameter moves at a similar pace regardless of how the loss
+is scaled.
+
+```
+m ← β₁m + (1−β₁)g          v ← β₂v + (1−β₂)g²
+m̂ = m/(1−β₁ᵗ)              v̂ = v/(1−β₂ᵗ)          # bias correction for early steps
+θ ← θ − η · m̂ / (√v̂ + ε)
+```
+
+## In LLM training
+
+Nearly every large language model is trained with **AdamW**, Adam with weight decay applied
+directly to the weights rather than folded into the gradient. It's usually run with β₂ ≈ 0.95, a
+warmup, then a decaying learning rate. The cost is memory: `m` and `v` are two extra numbers per
+parameter, which is part of why [LoRA](/visualize/lora/) is so popular for fine-tuning.
+
+> Implementation: `src/lib/ml/optimizers.ts`. Each surface has hand-tuned base learning rates; the
+> slider scales all three together.
