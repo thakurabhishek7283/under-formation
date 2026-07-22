@@ -1,0 +1,53 @@
+---
+title: Quantization
+description: Store model weights in 8, 4 or even 2 bits instead of 16. See the rounding error, why outliers ruin it, and how per-group scales fix it.
+pubDate: 2026-09-22
+category: Efficient LLMs
+tags: [quantization, inference, memory]
+---
+
+import QuantizationViz from '../../components/viz/ml/QuantizationViz.tsx';
+
+A 70B-parameter model in 16-bit floats needs 141 GB just for its weights, more than any single GPU.
+**Quantization** stores each weight as a small integer plus a shared scale factor, cutting memory
+2–4× and speeding up memory-bound inference by about the same factor.
+
+## Try it
+
+Drop the bit-width and watch the weights snap onto a coarse grid. Then turn the outliers on and off
+with a single per-tensor scale. A few large weights stretch the grid so far that almost every normal
+weight rounds to the same handful of levels. Switch to per-group scales to recover.
+
+<QuantizationViz client:visible />
+
+## Absmax quantization
+
+For a group of weights `w` and `b` bits:
+
+```
+scale = max|w| / (2^(b−1) − 1)       # e.g. / 127 for int8, / 7 for int4
+q     = round(w / scale)             # small integers, stored
+w'    = q · scale                    # reconstructed at compute time
+```
+
+The error per weight is at most `scale / 2`. The scale is set by the **largest** weight in the group,
+so a single outlier makes the step size large for everyone else.
+
+## The outlier problem, and the fixes
+
+LLMs have systematic outliers: a few features whose values are 10–100× larger than the rest
+(Dettmers et al., LLM.int8(), 2022). Techniques that made low-bit LLMs practical:
+
+- **Per-group scales**: one scale per 64–128 weights, so an outlier only hurts its own group. It costs
+  a 16-bit scale per group, which is 0.125 extra bits per weight at group size 128.
+- **Mixed precision** (LLM.int8()): keep the rare outlier columns in 16-bit and quantize the rest.
+- **Error-aware rounding** (GPTQ, AWQ): choose roundings, or rescale channels, to minimize the error
+  in each layer's *output* rather than in each individual weight.
+- **Better number formats**: NF4 (QLoRA) places its 16 levels to match the bell-shaped distribution
+  of weights instead of spacing them evenly.
+
+With these, 4-bit weights typically lose little quality. That's how a 70B model fits on one
+48–80 GB GPU and a 7–8B model runs on a laptop.
+
+> Implementation: `src/lib/ml/quantization.ts`. Weights are synthetic (normal, σ = 0.02, the typical
+> scale of transformer weights) with three optional outliers.

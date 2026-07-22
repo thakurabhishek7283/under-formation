@@ -1,0 +1,47 @@
+---
+title: LoRA (Low-Rank Adaptation)
+description: Fine-tune a billion-parameter model by training two thin matrices per layer. Why fine-tuning updates are low-rank, and what that saves.
+pubDate: 2026-09-22
+category: Efficient LLMs
+tags: [fine-tuning, LoRA, linear algebra]
+---
+
+import LoraViz from '../../components/viz/ml/LoraViz.tsx';
+
+Fully fine-tuning a 7B-parameter model means updating 7 billion numbers, and holding gradients and
+optimizer state for each of them. **LoRA** (Hu et al., 2021) freezes the original weights and learns
+only a small correction for selected matrices:
+
+```
+W' = W + (α/r) · B·A        B: d × r,  A: r × d,  r ≪ d
+```
+
+## Try it
+
+The heatmap on the left is an update `ΔW` of the kind fine-tuning produces. Drag the rank: `B·A` is
+the best rank-r approximation (by truncated SVD), and the error map shows what's missed. Two or
+three ranks capture nearly everything, because this update, like real ones, is **low-rank**.
+
+<LoraViz client:visible />
+
+## Why it works
+
+A `d × d` update has `d²` numbers, but if most of its "energy" lies in a few directions, meaning a few
+large singular values, then `B·A` with small `r` reproduces it closely using only `2dr` numbers. The
+LoRA paper found that fine-tuning updates for large models have exactly this structure: rank 4–8 is
+often enough, even when `d` is 4,096 or 12,288.
+
+## In practice
+
+- **Initialization**: `B = 0`, `A` random. The adapter starts as an exact no-op, so training begins
+  from the pre-trained model's behavior.
+- **Where**: originally just the attention query and value projections. Today often all linear
+  layers, which costs more parameters but usually gives better quality.
+- **Serving**: `B·A` can be merged into `W` after training (no extra inference cost), or kept separate
+  so one base model can hot-swap many small adapters, one per customer or task.
+- **QLoRA** (Dettmers et al., 2023) stores the frozen base in 4-bit
+  [quantized](/visualize/quantization/) form and trains LoRA adapters on top. That made fine-tuning a
+  65B model possible on a single 48 GB GPU.
+
+> Implementation: `src/lib/ml/lora.ts` (SVD via Jacobi eigendecomposition in `src/lib/ml/math.ts`).
+> Memory figures are rough: 16 bytes/parameter for full mixed-precision Adam training, excluding activations.
