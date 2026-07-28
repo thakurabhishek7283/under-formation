@@ -1,0 +1,99 @@
+---
+title: Decision Trees & Information Gain
+description: Try every threshold, keep the one that most reduces impurity, recurse. Watch a tree carve up feature space — and watch it start memorizing noise.
+pubDate: 2026-09-23
+category: Classical machine learning
+tags: [supervised, entropy, overfitting, CART]
+---
+
+import DecisionTreeViz from '../../components/viz/ml/DecisionTreeViz.tsx';
+
+A decision tree learns by asking one question at a time: *is x below 42?* Each answer sends you to
+a smaller sub-problem, solved the same way. There is no gradient, no loss surface and no
+initialization — just a search over thresholds, repeated.
+
+The interesting part isn't the tree, it's the *score*: how do you decide which question is best?
+
+## Try it
+
+Step through the growth. At each node you'll see the curve of **impurity gain** for every candidate
+threshold, drawn against the axis it splits on — below the plot for `x`, beside it for `y`. The
+tree takes the peak. The dashed box is the region the current node is responsible for.
+
+<DecisionTreeViz client:visible n={160} />
+
+## Impurity: how mixed is this node?
+
+A node holding 20 of class A and 0 of class B is **pure** — nothing to decide. A node holding 10
+and 10 is as impure as it gets. Two ways to put a number on that, both zero when pure and maximal
+at 50/50:
+
+```
+Gini(p)    = 1 − Σ pᵢ²           # chance of mislabelling a random sample
+Entropy(p) = − Σ pᵢ log₂ pᵢ      # bits needed to describe the label
+```
+
+For a 50/50 node, Gini = 0.5 and entropy = 1 bit. The two rarely disagree about which split is
+best — switch the control and watch the chosen cuts barely move. Gini is slightly cheaper (no
+logarithm), which is why it's the scikit-learn default; entropy has the nicer interpretation, since
+the gain is then literally **information gain**, the bits of label uncertainty the question
+removes.
+
+## The gain of a split
+
+Score a candidate by how much impurity it removes, weighting each side by how many samples land
+there:
+
+```
+gain = I(parent) − (n_left/n)·I(left) − (n_right/n)·I(right)
+```
+
+The weighting matters. A split that peels off 3 perfectly pure samples and leaves 97 untouched
+barely helps, even though one side is spotless. The tree tries every midpoint between consecutive
+values on every feature — a few hundred candidates per node — and keeps the best. That's `O(n·d)`
+per node with sorted features, which is why trees train so fast.
+
+## Greedy, and what that costs
+
+The tree never reconsiders. It takes the locally best cut and moves on, which is exactly why the
+**XOR** dataset is so instructive: choose it and look at the gain curve on the first node. It's
+flat — *no* single cut on either feature separates anything, because each half of `x` still holds
+an even mix of both classes. A greedy learner that demanded positive gain would give up here. The
+tree survives only because it splits anyway and finds real gain one level down.
+
+That's the general shape of the problem: trees can't see combinations of features until they've
+already committed to one of them. It's also why an axis-aligned tree is so awkward on the
+**Diagonal** data — a 45° boundary that one linear model gets exactly right costs the tree a long
+staircase of cuts, and it still only approximates it.
+
+## Depth, and the moment it turns into memorizing
+
+Drag **max depth** up and watch the two accuracy curves separate. Training accuracy climbs towards
+100% — given enough depth every training point gets its own leaf, and a leaf containing one point
+is never wrong about it. Held-out accuracy peaks somewhere in the middle and then falls. The gap
+between the curves *is* overfitting, and the data has 6% label noise in it precisely so you can see
+the tree dutifully learning the noise.
+
+Ways to stop it, all visible in the controls or one step away:
+
+- **Max depth** — a blunt cap.
+- **Min samples per split** — refuse to split a node that's already small, where "the best cut"
+  is just noise. Raise it and the deep-tree collapse softens.
+- **Pruning** — grow the full tree, then cut back the branches that don't pay for themselves on
+  held-out data (cost-complexity pruning). Usually better than a depth cap, because different
+  branches deserve different depths.
+
+## Why forests
+
+One deep tree is a high-variance model: change a few training points and you get a visibly
+different tree. That's a weakness you can average away. **Random forests** train many trees, each
+on a bootstrap sample of the rows and each split choosing from a random subset of features, then
+vote. The individual trees stay deep and overfit-y; their *errors* are decorrelated enough that the
+average isn't.
+
+**Gradient boosting** (XGBoost, LightGBM) goes the other way: many deliberately shallow trees, each
+fitted to the residual error left by the ones before it. On tabular data, boosted trees are still
+the model to beat — often ahead of neural networks.
+
+> Implementation: `src/lib/ml/decisionTree.ts`. The data carries 6% label noise, and the 70/30
+> train/held-out split is fixed so the accuracy gap is real rather than resampling luck.

@@ -1,0 +1,101 @@
+---
+title: k-Means Clustering
+description: Alternate two trivial steps — assign every point to its nearest centre, move every centre to its points' mean — and clusters fall out. See why it works, and the shapes it cannot find.
+pubDate: 2026-09-23
+category: Classical machine learning
+tags: [unsupervised, clustering, Lloyd's algorithm]
+---
+
+import KMeansViz from '../../components/viz/ml/KMeansViz.tsx';
+
+Give k-means a pile of unlabelled points and a number `k`, and it will hand back `k` groups. It is
+the first unsupervised algorithm most people meet, and it is built from two steps so simple they
+look like they couldn't possibly be enough:
+
+1. **Assign** each point to the nearest centre.
+2. **Move** each centre to the mean of the points that chose it.
+
+Repeat until nothing changes. That's the whole algorithm — Lloyd's algorithm, 1957.
+
+## Try it
+
+Step through with ▶ and watch the two half-steps alternate. The shaded regions are the **Voronoi
+cells** of the centres: the assign step draws exactly these boundaries, because "nearest centre"
+*is* the cell you fall in. Points that switch cluster are outlined and drawn with a line to their
+new centre.
+
+<KMeansViz client:visible initialK={3} n={150} />
+
+## Why it converges
+
+Both half-steps minimize the same quantity, the **inertia** (within-cluster sum of squares):
+
+```
+J = Σᵢ ‖xᵢ − c_{a(i)}‖²        a(i) = the cluster point i is assigned to
+```
+
+- The **assign** step holds the centres fixed and picks, for each point, the `a(i)` with the
+  smallest distance. It cannot raise `J`.
+- The **update** step holds the assignment fixed and replaces each centre with its cluster's mean.
+  The mean is precisely the point that minimizes the sum of squared distances to a set, so this
+  cannot raise `J` either.
+
+`J` never increases, and there are only finitely many possible assignments, so the algorithm must
+stop. Watch the inertia chart: it steps down twice per iteration and then flattens.
+
+That argument guarantees convergence — **it does not guarantee a good answer**. It stops at a local
+optimum. Press **Restart** a few times on *Uneven sizes*: the same data, the same `k`, different
+starting centres, different final clustering.
+
+## Why the start matters, and k-means++
+
+With random starting points, two centres can land inside one true cluster, and the algorithm will
+happily split that cluster in half while lumping two others together — nothing in the update rule
+can undo it.
+
+**k-means++** fixes this cheaply. The first centre is a random point; each later one is drawn with
+probability proportional to **D²**, its squared distance to the nearest centre chosen so far. Far
+away points are far more likely to be picked, so the starting centres spread out. Switch the
+**Start** control to `Random points` and step through the init phase both ways — under k-means++
+the shading shows the D² weights each centre is drawn from.
+
+In practice k-means++ both converges in fewer iterations and lands in better optima often enough
+that it's the default in scikit-learn.
+
+## Choosing k
+
+k-means cannot tell you `k`; you have to. Inertia is no help on its own, because it *always* falls
+as `k` rises — at `k = n` every point is its own cluster and `J = 0`. The usual move is to look for
+the **elbow**: the `k` after which the curve flattens out. On the three-blob data the bend at
+`k = 3` is obvious; on the moons there is no bend at all, which is itself informative.
+
+More principled alternatives: the **silhouette score** (how much closer a point is to its own
+cluster than to the next nearest), or the **gap statistic** (compare inertia to what you'd get on
+uniform random data).
+
+## What it can't do
+
+The failure cases in the picker aren't edge cases, they're the assumptions showing through:
+
+| Dataset | What happens | The assumption it breaks |
+|---|---|---|
+| Uneven sizes | The big loose cluster gets split | Clusters have similar spread |
+| Stretched | Cuts *across* the elongated clusters | Distance is isotropic — no notion of shape |
+| Two moons | Never recovers the moons at any `k` | Clusters are convex blobs around a centre |
+
+k-means draws straight boundaries halfway between centres, because that's what "nearest centre"
+means. If your clusters aren't roughly round and roughly equal, the boundary it can draw is the
+wrong shape. The fixes are different algorithms, not more iterations: **Gaussian mixtures** with
+full covariance for stretched clusters, **DBSCAN** for arbitrary shapes and noise, or **spectral
+clustering**, which embeds the points first and then runs k-means in a space where the moons *are*
+separable.
+
+## Cost
+
+Each iteration is `O(n · k · d)` — every point against every centre. That's cheap, and it's why
+k-means still gets used on very large datasets when better-fitting methods would be too slow.
+**Mini-batch k-means** samples a batch per iteration instead of the full set and gives up a little
+quality for a large speedup.
+
+> Implementation: `src/lib/ml/kmeans.ts`. The Voronoi cells are computed exactly, by clipping the
+> bounding box with the perpendicular bisector against each other centre.
