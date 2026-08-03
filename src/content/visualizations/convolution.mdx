@@ -1,0 +1,102 @@
+---
+title: Convolution & Pooling
+description: Drag a small grid of weights across an image, and a feature detector falls out. The two ideas that make CNNs work — local windows and shared weights — in one picture.
+pubDate: 2026-09-23
+category: Neural network building blocks
+tags: [CNN, computer vision, weight sharing]
+---
+
+import ConvolutionViz from '../../components/viz/ml/ConvolutionViz.tsx';
+
+A dense layer connects every input to every output. On a 224×224 image that's 50,176 inputs, and a
+single hidden layer of the same size would need 2.5 *billion* weights — before it has learned
+anything. Worse, it would have to learn what an edge looks like separately for every position,
+because nothing ties the top-left corner's weights to the bottom-right's.
+
+A convolution layer fixes both problems with one change: use a **small window of weights**, and
+**slide the same window everywhere**.
+
+## Try it
+
+Step through and watch one output cell being produced at a time. The blue box is the patch of input
+the kernel is sitting on; the orange cell is where the result lands. The strip underneath shows all
+nine multiplications for that single cell.
+
+The kernel is editable — type into it and the feature map recomputes. Try turning Sobel's `-1 0 1`
+column into `-1 0 -1` and watch edge detection turn into something useless.
+
+<ConvolutionViz client:visible />
+
+## What one cell is
+
+Each output cell is a dot product between the kernel and the patch under it:
+
+```
+out[y][x] = Σ  Σ  kernel[ky][kx] · input[y·s + ky − p][x·s + kx − p]
+           ky  kx
+```
+
+That's all a convolution is. The reason it detects things is the sign pattern. Sobel-x has negative
+weights on the left column and positive on the right, so it computes *right minus left*: near zero
+on a flat area, large where brightness jumps horizontally. Switch the input to **One vertical edge**
+and look at the feature map — a bright stripe exactly where the edge was, and nothing anywhere else.
+
+Swap to **Sobel y** and the same edge disappears, because the detector is now looking for horizontal
+changes. A real CNN learns dozens of these per layer instead of being handed them.
+
+## Weight sharing, and why the parameter count collapses
+
+Compare the two stat tiles. The kernel is 9 weights plus a bias. A dense layer producing the same
+output shape needs hundreds of thousands. The convolution reuses the same 10 numbers at every
+position, which buys two things:
+
+- **Far fewer parameters**, so it trains on far less data.
+- **Translation equivariance**: move the input, and the feature map moves the same way. A detector
+  learned in one corner works in every corner, for free. This is prior knowledge about images
+  built into the architecture, not learned from data.
+
+## Stride and padding
+
+Two knobs decide the output size:
+
+```
+out = ⌊(in + 2·pad − k) / stride⌋ + 1
+```
+
+- **`valid` padding** (none) means the window must fit entirely inside, so the output is smaller
+  than the input — a 14×14 image with a 3×3 kernel gives 12×12. Stack a few layers and the image
+  shrinks away.
+- **`same` padding** rings the input with zeros so the output keeps its size. That's what lets deep
+  CNNs stack dozens of layers. Switch it on and step to a corner: the strip shows the terms that
+  fall outside the image contributing zero, which is why convolutions slightly dim edges.
+- **Stride 2** moves the window two cells at a time, halving the output. It's the cheap way to
+  downsample inside the convolution itself.
+
+## Pooling
+
+After convolving, a pooling layer summarizes each small block — usually the max of a 2×2 window.
+It halves the resolution and adds a little **translation invariance**: shift the input by one pixel
+and the max over the block frequently doesn't change at all, so later layers see a stable signal.
+
+Max pooling keeps the strongest response ("was this feature present anywhere in this block?"),
+which suits detectors. Average pooling smooths instead. Toggle between them and watch the pooled
+map: max keeps the edges crisp, average blurs them.
+
+Modern architectures often drop pooling in favour of strided convolutions, which learn their own
+downsampling rather than hard-coding it.
+
+## The rest of a CNN
+
+One convolution gives one feature map. A real layer has many kernels — 64 or 256 of them — each
+producing its own map, and the next layer convolves across *all* of them at once. Stack that
+with a non-linearity after each convolution and a pattern emerges: early layers respond to edges
+and colour blobs, middle layers to textures and parts, late layers to whole objects. The
+**receptive field** — how much of the original image one cell can see — grows with every layer,
+which is how a 3×3 kernel eventually reasons about an entire face.
+
+This is also the piece [attention](/visualize/self-attention/) replaces in a vision transformer:
+instead of a fixed local window, every patch gets to look at every other patch, and which ones
+matter is learned rather than built in.
+
+> Implementation: `src/lib/ml/convolution.ts`. The bias term is left out of the arithmetic to keep
+> the strip readable, but it's counted in the parameter tile.

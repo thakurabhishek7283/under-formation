@@ -1,0 +1,117 @@
+---
+title: Positional Encoding & RoPE
+description: Attention can't tell word order on its own. Compare sinusoidal, learned and rotary encodings — and see why RoPE's similarity matrix is constant along its diagonals.
+pubDate: 2026-09-24
+category: How LLMs work
+tags: [transformers, RoPE, long context]
+---
+
+import PositionalViz from '../../components/viz/ml/PositionalViz.tsx';
+
+[Self-attention](/visualize/self-attention/) computes a weighted sum over all the other tokens.
+Permute the input and every weight follows its token, so every output is the same, just reordered.
+The mechanism is **permutation-equivariant**: on its own it cannot tell *the dog bit the man* from
+*the man bit the dog*.
+
+So position has to be injected deliberately. How you do it turns out to decide how far the model
+can extrapolate beyond the context length it was trained on.
+
+## Try it
+
+Switch between the three schemes and watch the **similarity matrix** — the position-derived part of
+the attention score for every pair of positions. That one picture is where the schemes differ.
+
+<PositionalViz client:visible />
+
+## Sinusoidal: a continuous binary counter
+
+The original transformer adds a fixed vector to each token embedding:
+
+```
+PE[pos][2i]   = sin(pos · θᵢ)
+PE[pos][2i+1] = cos(pos · θᵢ)          θᵢ = base^(−2i/d),  base = 10000
+```
+
+Each dimension *pair* is a wheel turning at its own rate. The first pair completes a turn every
+~6 tokens; the last takes tens of thousands. Reading the pairs together pins down a position, the
+way the digits of a binary counter do — except the digits are continuous, so nearby positions get
+nearby codes. That's the property the similarity matrix shows: bright on the diagonal, fading
+outwards.
+
+Two consequences worth knowing. It needs **no parameters** — it's a formula, so it's defined for
+positions you never trained on. And because rotation is linear, `PE[pos+k]` is a fixed linear
+function of `PE[pos]`, which means a relative offset is in principle learnable by the attention
+weights.
+
+"In principle" is doing work there. In practice, adding position into the same vector as content
+means the two compete for the same dimensions, and the relative structure has to be recovered
+rather than being handed over.
+
+## Learned: simple, and it stops at the edge
+
+BERT and GPT-2 just make the position table a parameter: one trainable vector per slot. It's
+trivially easy and it works — within the trained range.
+
+Select it and look at the similarity matrix: no structure at all, because nothing in the objective
+requires position 5 and position 6 to end up similar. Whatever regularity a trained model develops
+is learned from data, and, crucially, **position 2049 was never trained**, so a model with a 2048
+table has no meaningful representation of anything past it. Extending context means adding rows
+that start as noise.
+
+## RoPE: rotate instead of add
+
+Rotary embeddings, now used by Llama, Qwen, Mistral, Gemma and most current models, change *where*
+position enters. Rather than adding anything to the embedding, they rotate the query and key
+vectors themselves, pair by pair, by an angle proportional to position:
+
+```
+RoPE(x, pos):  for each pair (x₂ᵢ, x₂ᵢ₊₁), rotate by pos·θᵢ
+```
+
+Now the algebra pays off. The attention score between a query at `m` and a key at `n` is
+
+```
+⟨RoPE(q, m), RoPE(k, n)⟩ = f(q, k, m − n)
+```
+
+— rotating by `m` and then measuring against something rotated by `n` leaves only the **difference**
+of the angles. Position enters the score *only* as a relative offset. Select RoPE and look at the
+matrix: every diagonal is a constant colour, because every pair at the same distance scores
+identically. The three offset curves at the bottom collapse onto one line for exactly this reason.
+
+There's a practical bonus: it costs no parameters, and because it multiplies q and k rather than
+adding to the residual stream, position never consumes embedding capacity that content needs.
+
+## Base θ and long context
+
+Drag the **base** slider and watch the slowest wheel. This is the single most important knob for
+context length.
+
+The lowest-frequency pair has wavelength `2π · base^((d−2)/d)`. If a model's longest wavelength is
+shorter than the context you're feeding it, the slow dimensions wrap around and two far-apart
+positions get similar codes — the model genuinely cannot tell them apart.
+
+That's why extending a model's context usually starts here:
+
+- **Position interpolation**: squeeze positions into the trained range (`pos → pos·L/L′`). Cheap,
+  and it works, but it compresses the fine detail the fast wheels were carrying.
+- **NTK-aware scaling / YaRN**: raise the base instead, stretching the slow wheels while leaving
+  the fast ones mostly alone — better at keeping local precision while extending reach.
+- Llama 3 ships with base 500,000 rather than 10,000 for precisely this reason.
+
+## The practical summary
+
+| | Parameters | Relative by construction | Extrapolates |
+|---|---|---|---|
+| Sinusoidal | none | no — learnable in principle | somewhat |
+| Learned | `L × d` | no | no, hard stop at `L` |
+| RoPE | none | **yes** | with base scaling |
+| ALiBi | none | yes — a linear distance penalty on the score | well, by design |
+
+**ALiBi** deserves the footnote: it skips encoding position in the vectors entirely and instead
+subtracts a penalty proportional to distance from each attention score. Cruder, and it makes
+distant tokens systematically less attended, but it extrapolates smoothly.
+
+> Implementation: `src/lib/ml/positional.ts`. For the added schemes the matrix shows `PE_m · PE_n`;
+> for RoPE it shows the full score between one fixed query and key rotated to each position, which
+> is the quantity that actually reaches the softmax.
