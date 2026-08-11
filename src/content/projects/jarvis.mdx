@@ -1,0 +1,49 @@
+---
+title: Jarvis
+description: AI resume tailoring. Scores a LaTeX resume against a job description, proposes line-level rewrites you review one at a time, and ranks job openings against your career goals with pgvector.
+date: 2026-08-08
+tech: [Python, FastAPI, PostgreSQL, pgvector, Pydantic AI, Angular, Docker]
+status: live
+featured: true
+repo: https://github.com/thakurabhishek7283/Jarvis
+---
+
+## What it is
+
+Rewriting a resume for every role is tedious, and most AI tools make it worse: they hand back a
+"slightly different everywhere" document you can't review, in a layout that no longer matches your
+template. Jarvis keeps one **master resume** in LaTeX and produces **tailored versions** for specific
+jobs, where every change is a single proposed edit you accept, reject, or send back with feedback.
+
+It also answers the question before that one, *which roles are worth chasing?*, by embedding your
+career goals and each job description into the same vector space and ranking openings by semantic
+similarity rather than keyword overlap.
+
+## How it works
+
+- **Stack**: an Angular SPA (standalone components, signals) over a fully async FastAPI backend with
+  SQLModel and Alembic, PostgreSQL + pgvector, and a separate LaTeX worker service (pdflatex, xelatex,
+  lualatex, latexmk) that compiles PDFs in its own Docker container.
+- **Structured LLM output**: every model call goes through Pydantic AI, so the ATS score, missing
+  keywords and each proposed patch come back as validated, typed objects instead of free text.
+  Schema violations retry at the library layer.
+- **Template-preserving tailoring**: the master `.tex` is parsed into *frozen* spans (preamble,
+  macros, employers, titles, dates) and *editable* spans (bullet bodies). The model only ever sees and
+  rewrites the editable spans, and rendering splices the new text back in place, so every tailored
+  version is byte-for-byte the same template.
+- **Reviewed patches**: a review returns the ATS score and one patch per proposed edit. Nothing is
+  written until every patch has a decision, and that gate is enforced on the server, not by hiding a
+  button in the UI.
+- **Semantic matching**: embeddings run locally (fastembed / ONNX, 384 dimensions), so re-indexing
+  costs nothing and sends nothing off the machine. Jobs are ranked by pgvector cosine similarity.
+- **Cheap re-scoring**: each (resume, job) score is cached with a content fingerprint. A changed
+  resume is labelled *stale* rather than silently re-scored, so opening a screen never spends a model
+  call.
+
+## What I learned
+
+Asking a model for a whole document back makes its output impossible to review. Asking it for one
+`{find, replace, reason}` edit at a time, applied by exact match, turns the LLM into something closer
+to a code reviewer: every change is small, attributable, and reversible. Combining the score and the
+patches into a single call also stopped the two answers from disagreeing, which happened when they
+were separate endpoints.
