@@ -1,0 +1,107 @@
+---
+title: Overfitting, Bias & Variance
+description: Turn the model's flexibility up and watch training error fall while test error turns back around. Then watch L1 and L2 penalties pull it back.
+pubDate: 2026-09-24
+category: Training neural networks
+tags: [regularization, bias-variance, model selection]
+---
+
+import OverfittingViz from '../../components/viz/ml/OverfittingViz.tsx';
+
+Every supervised model has a dial for how flexible it is: polynomial degree here, tree depth in a
+[decision tree](/visualize/decision-tree/), width and depth in a network. Turn it up and training
+error falls, always, all the way to zero. Test error does something else — it falls, bottoms out,
+and then climbs. Everything about model selection follows from that one shape.
+
+## Try it
+
+Start at degree 9 with no penalty and press **New sample** a few times. The fit lurches around
+wildly between samples while the training points are matched almost exactly. Then switch the
+penalty to **L2** and raise λ, and watch the curve calm down.
+
+<OverfittingViz client:visible />
+
+## Fitting the noise
+
+The model can only see the training points, and those points are *signal plus noise*. A
+low-degree polynomial isn't flexible enough to chase the noise, so it can't. A degree-12
+polynomial through 15 points has more than enough freedom to pass near all of them, and the only
+way to do that is to bend towards each one's individual error.
+
+The giveaway is the weight chart. Fit degree 10+ with no penalty and look at the largest |w|:
+often in the hundreds or thousands. Those huge coefficients are fighting each other — a big
+positive `x⁸` term cancelled by a big negative `x⁹` term — and the cancellation is exact only near
+the training points. Between them, nothing holds it together, and the curve flies off.
+
+Two things fix this without changing the model class at all: **more data** (raise the training
+points slider at high degree and watch the wiggling subside — the same model becomes well behaved
+once there are enough constraints) and **regularization**.
+
+## Bias and variance
+
+Tick **Refit on 24 fresh samples**. Each faint orange curve is the same model trained on a
+different draw from the same process; the dashed line is their average. Two independent things can
+go wrong:
+
+- **Bias²** — how far the *average* fit sits from the true function. At degree 1 the average is a
+  straight line through a sine wave: badly wrong no matter how much data you collect.
+- **Variance** — how much the individual fits differ from that average. At degree 12 the curves
+  fan out enormously: each one is chasing its own sample's noise.
+
+Expected test error decomposes exactly into the two, plus the noise you can never remove:
+
+```
+E[(y − f̂(x))²] = Bias[f̂(x)]² + Var[f̂(x)] + σ²
+                   ↑ too rigid   ↑ too eager   ↑ irreducible
+```
+
+Step the degree up from 0 and watch the numbers trade off: bias falls, variance rises. The best
+model is not the one that minimizes either — it's the one that minimizes the sum, which is what
+the bottom of the test-error curve is.
+
+This is also why "more flexible model" is not the same as "better model", and why a model that
+fits your training data perfectly should worry you rather than please you.
+
+## What the penalties actually do
+
+Both penalties add a cost for large weights, so the fit has to justify every bit of wiggle it
+buys:
+
+```
+L2 (ridge):  minimize  ‖y − Xw‖² + λ‖w‖²      ⟶  w = (XᵀX + λI)⁻¹Xᵀy
+L1 (lasso):  minimize  ‖y − Xw‖² + λ‖w‖₁      ⟶  no closed form
+```
+
+**Ridge** shrinks everything smoothly and never quite to zero. Its gradient contribution is `2λw`,
+which gets weaker as `w` approaches zero — so it pushes hard on the huge coefficients that cause
+wild curves and barely touches the small ones. Adding `λI` makes the matrix well-conditioned too,
+which is why ridge is the standard fix for correlated features.
+
+**Lasso** shrinks by a constant amount regardless of size, so weights that aren't earning their
+keep get pushed to *exactly* zero and stay there. Switch to L1, raise λ, and watch the non-zero
+weight count drop — the model is selecting features, not just damping them. That's the reason to
+reach for L1: you get a sparse, readable model.
+
+The λ dial spans the whole story: at 0 you have the unregularized fit; too large and everything is
+shrunk towards a flat line, which is bias again. λ is chosen by cross-validation, not by eye.
+
+## Where this shows up in deep learning
+
+The same ideas, renamed:
+
+- **Weight decay** is L2, and it's in nearly every optimizer used to train large models — AdamW is
+  literally [Adam](/visualize/gradient-descent/) with weight decay decoupled from the gradient.
+- **Early stopping** works because training and validation error separate over *time* as well as
+  over model size. Stopping at the validation minimum is a regularizer you get for free.
+- **Dropout** and **data augmentation** attack variance directly, by making it harder for the
+  network to rely on any one path or any one memorized example.
+
+The modern wrinkle: very large networks often *don't* follow the U-curve. Past the point of
+interpolating the training set, test error can fall again — **double descent**. The bias-variance
+tradeoff still holds for a fixed model class, but "more parameters is worse" stopped being a
+reliable rule once models got big enough to have many exact fits and an optimizer with a taste for
+the smooth ones.
+
+> Implementation: `src/lib/ml/regression.ts`. Ridge is solved in closed form by Gaussian
+> elimination; lasso uses coordinate descent with soft thresholding, which is where the exact
+> zeros come from. The intercept is never penalized.

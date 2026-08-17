@@ -1,0 +1,105 @@
+---
+title: Confusion Matrix, ROC & Precision–Recall
+description: A classifier outputs a score, not a decision. Slide the threshold and watch accuracy, precision, recall and the two curves move — and watch accuracy lie when classes are imbalanced.
+pubDate: 2026-09-24
+category: Evaluating models
+tags: [evaluation, ROC, precision, imbalanced data]
+---
+
+import MetricsViz from '../../components/viz/ml/MetricsViz.tsx';
+
+"The model is 97% accurate" is close to meaningless on its own, and this page is about why. A
+binary classifier doesn't emit *spam* or *not spam* — it emits a number. Turning that number into a
+decision needs a **threshold**, and every metric you've heard of is a function of where you put it.
+
+## Try it
+
+Drag the threshold across the two score distributions. The confusion matrix, both curves and every
+number below update together. Then drag **positives in the data** down to 5% and watch what
+accuracy does.
+
+<MetricsViz client:visible />
+
+## The four outcomes
+
+Everything starts with the 2×2 table. Two ways to be right, two ways to be wrong:
+
+|  | predicted − | predicted + |
+|---|---|---|
+| **actually +** | false negative — missed it | true positive — caught it |
+| **actually −** | true negative | false positive — false alarm |
+
+Moving the threshold *left* flags more things: recall goes up, false alarms go up. Moving it
+*right* is stingier: precision goes up, misses go up. You cannot improve both by moving the
+threshold — the only thing that improves both is a better model, which here means raising the
+**class separation** slider.
+
+```
+precision = TP / (TP + FP)     of what I flagged, how much was real
+recall    = TP / (TP + FN)     of what was real, how much did I flag
+F1        = harmonic mean of the two
+```
+
+Precision reads down the "predicted +" column; recall reads across the "actually +" row. That's the
+whole difference, and it's why they trade off.
+
+## Where accuracy fails
+
+Set prevalence to 5% and drag the threshold far right so nothing is flagged. Accuracy: 95%.
+Recall: 0%. The model is useless — it has found nothing — and accuracy calls it an A.
+
+That's why the **always-majority baseline** tile is there. Accuracy only means something compared
+to it. A 97%-accurate model on data that's 96% negative has earned almost nothing.
+
+This is not a contrived case. Fraud, disease screening, click prediction, defect detection, rare
+failure modes — the interesting class is usually the rare one, and it's usually the one you care
+about.
+
+## ROC: every threshold at once
+
+Rather than arguing about one threshold, sweep them all. Each threshold gives a (false positive
+rate, recall) pair, and tracing them out gives the **ROC curve**. The dashed diagonal is a coin
+flip. Up and to the left is better.
+
+**AUC** — the area underneath — has a genuinely nice interpretation: *the probability that the
+model scores a random positive above a random negative*. It's threshold-free, so it measures the
+ranking the model produces rather than any particular decision rule. Set separation to 0 and AUC
+sits at 0.5; raise it and AUC climbs towards 1.
+
+The catch: **ROC barely reacts to class imbalance.** Drag prevalence from 50% down to 2% and watch
+the ROC curve hold its shape while the PR curve collapses. FPR has the number of negatives in its
+denominator, so a flood of false positives among many negatives barely moves it — while precision,
+which counts those same false positives against a small number of true positives, falls off a
+cliff.
+
+## Precision–recall: the one to use when positives are rare
+
+The PR curve plots precision against recall for those same thresholds, and its baseline isn't a
+diagonal — it's a horizontal line at the prevalence, which is what a random scorer achieves. That
+baseline moves with the data, so the curve honestly reflects how hard the problem is.
+
+Rule of thumb: **if the positive class is rare and it's the one you care about, read PR, not ROC.**
+**Average precision** (AP) summarizes it the way AUC summarizes ROC.
+
+## Choosing the threshold
+
+Neither curve chooses for you, because the choice isn't statistical — it's about what an error
+costs.
+
+- A cancer screen wants **recall**: a missed case is far worse than a follow-up test.
+- A spam filter wants **precision**: a real email in the junk folder is worse than a spam in the
+  inbox.
+- With no strong asymmetry, maximizing **F1** is a reasonable default — that's what the button
+  does.
+- If you can put money on the two error types, skip the metrics and minimize expected cost
+  directly.
+
+One practical note: a model's scores are usually not probabilities, even when they come out of a
+sigmoid. If you need "70% means it happens 70% of the time" — for thresholding by expected cost,
+or for showing a user a number — check a **calibration curve** and fit Platt scaling or isotonic
+regression on held-out data. Ranking quality and calibration are separate properties, and AUC only
+measures the first.
+
+> Implementation: `src/lib/ml/metrics.ts`. Both curves come from a single descending sweep over
+> the scores, with tied scores handled as one group — a threshold can't split examples that share
+> a score.
