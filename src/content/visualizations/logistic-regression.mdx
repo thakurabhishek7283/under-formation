@@ -1,0 +1,113 @@
+---
+title: Logistic Regression & the Perceptron
+description: Two ways to learn a straight line between classes. The perceptron corrects its mistakes one at a time; logistic regression turns distance from the line into a probability and follows the gradient.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [supervised, linear models, sigmoid, log loss, perceptron]
+---
+
+import LinearClassifierViz from '../../components/viz/ml/LinearClassifierViz.tsx';
+
+The simplest useful classifier computes a weighted sum of the features and checks its sign:
+
+```
+score = w₀ + w₁·x + w₂·y          predict B if score > 0, else A
+```
+
+The boundary is the line `score = 0`, and the weight vector `(w₁, w₂)` points across it towards
+class B. Every model on this page draws that kind of line. They differ only in *how they choose
+w*, and that choice turns out to matter a great deal.
+
+## Try it
+
+Pick a method and step through its training. For the perceptron, each step is one correction:
+the ringed point was on the wrong side, and the dashed line is where the boundary was before it
+got fixed. For logistic regression, each step is one full gradient-descent epoch, and the
+background shading is the predicted probability.
+
+<LinearClassifierViz client:visible />
+
+## The perceptron: learn only from mistakes
+
+Rosenblatt's perceptron (1958) was the first learning machine built in hardware. Its rule is
+almost too simple to believe:
+
+```
+if y · (w · x) ≤ 0:        # sample on the wrong side  (y is +1 or −1)
+    w ← w + y · x          # add it to the weights
+```
+
+Adding a misclassified sample tilts the line towards classifying that sample correctly. Correct
+samples change nothing. On the **Separable** data it stops after a handful of corrections, and
+the **perceptron convergence theorem** (Novikoff, 1962) guarantees it always will. If every
+sample lies within radius `R` and some line separates the classes with margin `γ`, it makes at
+most `(R/γ)²` mistakes, however the data is ordered.
+
+The two weaknesses are visible too:
+
+- **It stops at the first line that works**, not the best one. Nothing in the rule prefers a line
+  far from both classes over one that grazes a point. That missing preference is exactly what
+  [support vector machines](/visualize/svm/) add.
+- **It never stops if no line exists.** Switch to *Overlapping blobs*: some point is always on the
+  wrong side, so the weights keep lurching back and forth until the step cap.
+
+## Logistic regression: a probability, and a gradient
+
+Logistic regression keeps the same score but passes it through the **sigmoid**,
+`σ(z) = 1 / (1 + e⁻ᶻ)`, to get a probability: `P(B | x) = σ(w · x)`. Far on the B side the
+probability is near 1, far on the A side near 0, and exactly 0.5 on the line. The panel under
+the weights shows this directly: every training sample, placed at its score on the sigmoid.
+
+Training minimizes the **log loss**, the average of `−log P(true class)`. Its gradient has a
+familiar shape:
+
+```
+∇ = (1/n) · Σ (p − y) · x
+```
+
+It's the perceptron update, except that every sample takes part, weighted by *how wrong* it is
+(`p − y`), rather than only the misclassified ones counting, each at full strength. A point on
+the right side but close to the line still pulls a little, so the line drifts towards the middle
+of the gap. The log loss is **convex**, so gradient descent can't get stuck: there's one bowl and
+it always finds the bottom.
+
+## Why the weights keep growing
+
+On the **Separable** data, watch `|w|` in the stats while the loss creeps towards zero. When the
+classes can be separated perfectly, the loss is minimized by being *infinitely confident*: scale
+`w` up and every probability moves closer to 0 or 1. There's no finite optimum, and the sigmoid
+sharpens into a step.
+
+An **L2 penalty** `λ‖w‖²` fixes this. Raise λ and the weights settle at a finite size. The
+probabilities stay honest near the boundary, and the model generalizes better on noisy data. In
+practice logistic regression is almost always regularized (scikit-learn does it by default).
+
+## Straight lines in a curved space
+
+On **Circles** or **XOR**, no line works, and both methods fail. Switch the features to
+*quadratic*. The model now scores `w · (1, x, y, x², y², xy)`. It is still linear in its weights,
+trained exactly the same way, but the boundary it draws in the plane is now a curve: an ellipse
+for the circles, and for XOR a hyperbola hugging the axes (the `xy` term alone is positive in two
+opposite quadrants and negative in the other two, which is XOR exactly).
+
+That idea — **transform the inputs, then fit a linear model** — is the thread through the rest of
+classical ML:
+
+- SVMs do it implicitly with [kernels](/visualize/svm/), without ever computing the new features.
+- [Neural networks](/visualize/neural-network/) *learn* the transformation instead of having it
+  hand-written. A network with no hidden layer is exactly this model.
+
+It's also why this model mattered historically. Minsky & Papert's *Perceptrons* (1969) proved
+that a single-layer perceptron can't compute XOR. The fix, hidden layers that learn their own
+features, needed backpropagation to train, and that didn't catch on until the 1980s.
+
+## More than two classes
+
+Replace the sigmoid with a **softmax** over one score per class and you have multinomial logistic
+regression, the output layer of nearly every neural classifier. It remains the default first
+model for tabular problems: fast, convex, well-calibrated probabilities, and weights you can
+read.
+
+> Implementation: `src/lib/ml/linear.ts`. Logistic regression uses full-batch gradient descent
+> and doesn't penalize the bias. The perceptron visits samples in a fixed order, which makes its
+> trace repeatable.

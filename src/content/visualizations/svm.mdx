@@ -1,0 +1,110 @@
+---
+title: Support Vector Machines
+description: Of all the lines that separate two classes, pick the one with the widest margin. Drag points around and see that only a few of them — the support vectors — decide anything. Then bend the line with kernels.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [supervised, max margin, kernels, SMO, hinge loss]
+---
+
+import SvmViz from '../../components/viz/ml/SvmViz.tsx';
+
+When two classes can be separated by a line, infinitely many lines do it. The
+[perceptron](/visualize/logistic-regression/) takes whichever one it reaches first. A support
+vector machine asks for the best one: the line that stays as far as possible from both classes,
+the one with the widest **margin**.
+
+That single preference leads to three of the best ideas in classical machine learning: a model
+that depends on only a handful of training points, a clean way to trade margin for mistakes, and
+the kernel trick.
+
+## Try it
+
+The solid line is the decision boundary `f(x) = 0`. The dashed lines are the margin, `f(x) = ±1`.
+Ringed points are **support vectors**. **Drag any point.** Move one that isn't ringed and nothing
+happens — the boundary ignores it completely. Move a ringed one and the whole solution shifts.
+Click empty space to add a point of the selected class.
+
+<SvmViz client:visible />
+
+## The widest street
+
+Write the boundary as `w · x + b = 0` and scale `w` so the closest points of each class sit at
+`w · x + b = ±1`. The gap between those two lines is `2 / ‖w‖` wide. Maximizing the margin is
+therefore the same as:
+
+```
+minimize  ½‖w‖²     subject to  yᵢ (w · xᵢ + b) ≥ 1   for every i
+```
+
+This is a convex quadratic program, so it has one answer and no local optima. On the
+**Separable** data with a linear kernel, the *Margin width* tile is that `2 / ‖w‖`, in plot units.
+
+## Only the support vectors matter
+
+Solved in its **dual** form, the SVM gives every training point a weight `αᵢ ≥ 0`, and the
+boundary is built from them:
+
+```
+w = Σ αᵢ yᵢ xᵢ          f(x) = Σ αᵢ yᵢ K(xᵢ, x) + b
+```
+
+For almost every point, `αᵢ` comes out exactly **zero**. The bar chart shows it: a few tall bars,
+then nothing. The points with `αᵢ > 0` are the support vectors, the ones on or inside the margin.
+You could delete every other training point and get the identical classifier. That's why dragging
+an unringed point does nothing: until it crosses into the margin, it isn't part of the solution.
+
+## Soft margins: C
+
+Real data overlaps, and then no line satisfies every constraint. The **soft-margin** SVM lets
+points violate the margin at a price:
+
+```
+minimize  ½‖w‖² + C · Σ max(0, 1 − yᵢ f(xᵢ))
+```
+
+The second term is the **hinge loss**: zero for a point safely outside the margin, growing
+linearly as it intrudes. `C` sets the exchange rate between a wide margin and few violations:
+
+- **Small C** means violations are cheap. The margin widens, many points become support vectors
+  (the orange rings are points pinned at `α = C`, inside the margin or misclassified), and the
+  boundary is smooth and robust to outliers.
+- **Large C** means violations are expensive. The margin shrinks to fit every point it can, which
+  on noisy data means fitting the noise.
+
+Try *Two blobs*, then sweep C from 0.01 to 1000 and watch the dashed lines close in.
+
+## The kernel trick
+
+Look at the dual formula again: training points appear only inside `K(xᵢ, x)`, which for a
+linear SVM is just the dot product `xᵢ · x`. Swap in any other function that behaves like a dot
+product in *some* feature space, and the SVM becomes a linear classifier in that space, without
+ever computing the features.
+
+- **Polynomial**, `(a · b + 1)²`, is exactly a dot product of the quadratic features
+  `(1, x, y, x², y², xy)`, suitably scaled — the same features you can switch on by hand in
+  [logistic regression](/visualize/logistic-regression/). Try it on *Circles*.
+- **RBF**, `exp(−γ‖a − b‖²)`, corresponds to an *infinite*-dimensional feature space. Each
+  support vector contributes a Gaussian bump, and the boundary is where the bumps for the two
+  classes balance. **γ** sets the bump width: small γ gives smooth, almost linear boundaries; large
+  γ wraps a little island around individual points. Set γ = 30 on *XOR* to watch it memorize.
+
+C and γ interact, so in practice they're tuned together by grid search with cross-validation.
+
+## How it's trained here
+
+The dual is solved exactly with **SMO** (Platt, 1998). It repeatedly picks the pair of `α`s that
+most violate the optimality conditions and solves that two-variable problem in closed form. The
+pair selection is the second-order rule LIBSVM uses. Each drag retrains from scratch, and the
+*SMO iterations* tile counts the pair updates.
+
+## Where SVMs stand
+
+Before deep learning, kernel SVMs held the state of the art on handwritten digits, text
+categorization and bioinformatics. They're still excellent for small and medium datasets with
+good features. They struggle with scale: the kernel matrix has `n²` entries and training time
+grows roughly between `n²` and `n³`. They also don't produce probabilities natively (libraries
+add them afterwards, with Platt scaling). On images and text, learned features — CNNs, then
+transformers — overtook fixed kernels.
+
+> Implementation: `src/lib/ml/svm.ts`. Inputs are centred and scaled to about ±2 before training.
+> The solver stops when the largest KKT violation drops below 10⁻³.

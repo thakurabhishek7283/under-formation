@@ -1,0 +1,92 @@
+---
+title: k-Nearest Neighbours
+description: The laziest learner there is — no training at all, just "look at the k closest examples and take a vote". See how k, the distance metric and feature scaling decide everything.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [supervised, kNN, distance metrics, instance-based]
+---
+
+import KnnViz from '../../components/viz/ml/KnnViz.tsx';
+
+Most classifiers learn a compact model from the data and then throw the data away. k-nearest
+neighbours does the opposite: it keeps every training example and does all its work when asked
+a question. To classify a new point, find the `k` stored examples closest to it and let them vote.
+
+That's the entire algorithm (Fix & Hodges, 1951). It has no parameters to fit, no loss function
+and no training loop, and it is still a strong baseline on many problems.
+
+## Try it
+
+Step through one prediction: the distance to every stored sample, the neighbourhood growing one
+neighbour at a time, then the vote. The dashed shape is every point within the current distance —
+a circle for Euclidean distance, a diamond for Manhattan, a square for Chebyshev. Click or drag
+anywhere to move the query; the shaded background is what k-NN would answer at every position.
+
+<KnnViz client:visible />
+
+## k is the whole bias–variance trade-off
+
+With **k = 1** the boundary follows every single training point. Each noisy sample gets its own
+little island, and training accuracy is always 100% — every point is its own nearest neighbour,
+so "training accuracy" measures nothing. As **k** grows the vote averages over a wider
+neighbourhood: the boundary smooths out and islands disappear. Push k far enough and it
+over-smooths, until every region votes for whichever class has more points overall.
+
+The accuracy chart shows both failure modes. On the overlapping **Two blobs**, k = 1 trails the best k by a few
+points on held-out data: it has memorized noise. On the **Spiral**, large k is a
+disaster. Once the neighbourhood is wider than the gap between the arms, it takes in both
+classes, and held-out accuracy sinks towards a coin flip. Choose k by cross-validation, and for two
+classes use an odd k so the vote can't tie.
+
+There's a neat guarantee at the k = 1 end. With enough data, the 1-NN error rate is at most twice
+the **Bayes error** — the error of the best possible classifier (Cover & Hart, 1967). Half of all
+the information needed to classify is in the single nearest neighbour.
+
+## What "near" means is a modelling decision
+
+Every choice of distance is a claim about which examples should count as similar:
+
+| Metric | Formula | Neighbourhood |
+|---|---|---|
+| Euclidean (L2) | `√(dx² + dy²)` | circle |
+| Manhattan (L1) | `\|dx\| + \|dy\|` | diamond |
+| Chebyshev (L∞) | `max(\|dx\|, \|dy\|)` | square |
+
+On these 2-D toy sets the three give similar answers. With real features they can differ a lot,
+and domain-specific distances (edit distance for strings, cosine similarity for text embeddings)
+are often what make k-NN work at all.
+
+## Standardize your features, or one of them wins by default
+
+Tick **Forget to standardize**. Now x is measured in units 5× smaller than y, as if one feature
+were in millimetres and the other in metres. The neighbourhood collapses into a tall thin sliver:
+a small change in x now outweighs a large change in y, so the vote is decided almost entirely by
+x, and the regions turn into vertical stripes.
+
+Nothing about the data changed, only its units. That's why distance-based methods (k-NN, k-means,
+SVMs with an RBF kernel) almost always start by rescaling each feature to zero mean and unit
+variance.
+
+## Weighted votes
+
+With **1/distance** weighting, closer neighbours count for more. It softens the effect of k —
+far-away members of the neighbourhood barely matter — and it makes ties vanishingly unlikely.
+It also makes a query that lands exactly on a training point return that point's label, like
+k = 1.
+
+## The catch: cost, and high dimensions
+
+k-NN moves all the cost to prediction time. One query means one distance per stored example —
+the stat tile counts them — so it's `O(n · d)` per prediction, and memory grows with the dataset.
+Spatial indexes (KD-trees, ball trees) help in low dimensions. At scale, **approximate** nearest
+neighbour search (HNSW graphs, product quantization) trades a little accuracy for orders of
+magnitude of speed. That's the same machinery behind vector databases and retrieval for LLMs,
+which are nearest-neighbour lookups over embeddings.
+
+The deeper problem is the **curse of dimensionality**. In hundreds of dimensions, the nearest and
+farthest points in a random dataset are almost the same distance away, so "nearest" stops meaning
+"similar". k-NN works when a good representation makes distance meaningful. That's why it pairs
+so well with learned embeddings, and why it struggles on raw high-dimensional inputs.
+
+> Implementation: `src/lib/ml/knn.ts`. Neighbours are found by exact search. Ties are broken in
+> favour of the single nearest neighbour's class, in both the prediction and the shaded map.
