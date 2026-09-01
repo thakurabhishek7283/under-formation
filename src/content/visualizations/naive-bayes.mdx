@@ -1,0 +1,111 @@
+---
+title: Naive Bayes, LDA & QDA
+description: Classify by modelling how each class generates data, then flip it with Bayes' rule. Three Gaussian models that differ only in their covariance assumptions — and the word-counting spam filter that made Naive Bayes famous.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [supervised, generative models, Bayes rule, Gaussian, spam filtering]
+---
+
+import GaussianViz from '../../components/viz/ml/GaussianViz.tsx';
+import SpamFilterViz from '../../components/viz/ml/SpamFilterViz.tsx';
+
+The other classifiers in this series learn the **boundary** directly — where class A ends and B
+begins. A **generative** classifier asks a different question: *what does each class look like?*
+It fits a probability model `p(x | class)` to each class separately, then uses Bayes' rule to turn
+those models around:
+
+```
+P(class | x)  =  P(class) · p(x | class)  /  p(x)
+```
+
+Prior times likelihood, normalized. The class with the largest product wins, and the decision
+boundary is simply wherever two products are equal.
+
+## Try it
+
+Each class gets a 2-D Gaussian, fitted by nothing more than averaging: a mean (the `+`) and a
+covariance (the ellipses at 1σ and 2σ). The table works through Bayes' rule at the probe point.
+Drag to move the probe and watch the likelihoods trade places across the boundary.
+
+<GaussianViz client:visible />
+
+## Three models, one knob
+
+The three buttons differ only in what shape the covariance is allowed to have:
+
+| Model | Covariance | Boundary | Parameters (d features, K classes) |
+|---|---|---|---|
+| Naive Bayes | diagonal, one per class | quadratic, axis-aligned | `2dK` |
+| LDA | full, **shared** by all classes | straight line | `dK + d(d+1)/2` |
+| QDA | full, one per class | any conic | `dK + K·d(d+1)/2` |
+
+(plus the `K − 1` class priors.) Why does sharing a covariance make the boundary straight?
+Taking logs of Bayes' rule, each class contributes a quadratic term `−½ xᵀΣ⁻¹x`. If every class
+uses the same Σ, that term is identical on both sides of the comparison and cancels, leaving
+something linear in `x`. That's **Linear Discriminant Analysis**, from R. A. Fisher's 1936 paper
+on iris flowers. It's one of the oldest pattern-recognition methods still in daily use.
+
+Give each class its own Σ and the quadratic terms no longer cancel: **QDA** can draw ellipses and
+hyperbolas.
+
+## The naive assumption
+
+Naive Bayes assumes the features are **independent given the class**, so the joint likelihood
+factors into a product of one-dimensional pieces:
+
+```
+p(x, y | class) = p(x | class) · p(y | class)
+```
+
+The two small plots beside the map are those pieces. The probe's height on each curve is the
+factor that goes into the table.
+
+Now switch to the **Correlated** data. Each class is a long diagonal cloud, and the two clouds sit
+side by side. Look at the marginal plots: along x alone, and along y alone, the two classes look
+almost *identical*. All the information is in the correlation — "high x goes with high y, but
+class B is shifted" — and that's precisely what Naive Bayes throws away. On the default
+sample it gets only about two in three right, while LDA, which models the tilt, gets well over 90%. On **Circles** the roles reverse:
+LDA can only draw a line and does little better than a coin flip, while Naive Bayes and QDA both find the ring.
+
+## Why assume something so wrong?
+
+Because the full covariance costs `d²` parameters, and the diagonal costs `d`. With two features
+it hardly matters. With 50,000 features — one per word in a vocabulary — a full covariance has over
+a billion entries and no dataset could estimate it. Naive Bayes needs one number per feature per
+class, trains in a single counting pass, and its *rankings* are often right even when its
+probabilities are badly overconfident (Domingos & Pazzani, 1997). That's why it became the classic
+text classifier.
+
+## The spam filter
+
+For text, each class gets a distribution over words instead of a Gaussian: `P(word | spam)` is how
+often that word appears in spam, out of all spam words. A message is scored by adding each word's
+**log-likelihood ratio** to the prior log-odds. Working in logs turns a product of tiny
+probabilities into a readable sum:
+
+<SpamFilterViz client:visible />
+
+Things to try:
+
+- *Free lunch at the meeting tomorrow*: "free" argues hard for spam, but "lunch", "meeting" and
+  "tomorrow" outvote it. Each word is judged alone, and the evidence simply adds up.
+- **Set α to 0.** Smoothing off, the probability of a word never seen in one class is exactly
+  zero, so one unseen word makes that class *impossible*, whatever the rest of the message says.
+  **Laplace smoothing** pretends every word was seen `α` extra times in every class, which keeps
+  every probability positive.
+- Reorder the words. Nothing changes: this is a **bag of words**, and grammar is invisible to it.
+
+This is the design Paul Graham popularized in *A Plan for Spam* (2002), and word-counting Bayesian
+filters were the backbone of spam filtering for years afterwards.
+
+## Generative vs discriminative
+
+Logistic regression and LDA can draw exactly the same family of boundaries (straight lines), but
+they fit them differently. LDA models where the data comes from; logistic regression models only
+the boundary. When the Gaussian assumption holds, LDA uses the data more efficiently and learns
+from fewer examples. When it doesn't, logistic regression's weaker assumptions win as the data
+grows (Ng & Jordan, 2001). Generative models have one more trick: since they model `p(x | class)`,
+they can notice when an input looks like *no* class at all.
+
+> Implementation: `src/lib/ml/bayes.ts`. Covariances are maximum-likelihood estimates with a tiny
+> ridge added to the diagonal, so a degenerate class never makes Σ singular.

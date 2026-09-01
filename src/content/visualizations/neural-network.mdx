@@ -1,0 +1,101 @@
+---
+title: Neural Networks (ANN / MLP)
+description: Stack logistic-regression units into layers and let backpropagation tune them all at once. Watch every neuron's piece of the picture while a network learns to classify circles, XOR and spirals.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [supervised, neural networks, MLP, activation functions, deep learning]
+---
+
+import NeuralNetViz from '../../components/viz/ml/NeuralNetViz.tsx';
+
+An artificial neural network — in its classic form, a **multi-layer perceptron** — is what you
+get when [logistic regression](/visualize/logistic-regression/) stops being handed its features
+and starts learning them. Each neuron computes a weighted sum of its inputs and passes it through
+a non-linearity:
+
+```
+a = act(w · inputs + b)
+```
+
+A layer is many of those side by side, and a network is layers in sequence. The last layer is a
+softmax over the classes, so the whole network ends in a logistic regression whose inputs are the
+features the hidden layers built.
+
+## Try it
+
+Press **Train**. Every tile in the network shows what that one neuron outputs at every point of the
+plane. The input tiles are just x and y. Each first-layer neuron is one soft straight cut. Deeper
+neurons combine the cuts of the layer before. Lines are weights: blue positive, red negative,
+thicker for larger magnitude.
+
+<NeuralNetViz client:visible />
+
+## Watching it build a boundary
+
+Start on **Circles** with one hidden layer:
+
+- **0 hidden layers**: plain logistic regression. One straight line, and the circles stay at
+  about 50%.
+- **1 neuron**: one soft cut. It can't enclose anything.
+- **2 neurons**: two cuts, which can carve out a band but not a closed region.
+- **3 neurons**: three cuts make a triangle, and the output layer can now say "inside all three".
+  Accuracy jumps to nearly 100%.
+- **4 or more**: the polygon gets more sides and the boundary rounder.
+
+Look at the first-layer tiles after training. Each is a half-plane, dark on one side and light on
+the other, at a different angle. The output neuron's job is to combine them, and that's the
+general pattern: early layers compute simple features, later layers combine them into complex ones.
+
+The **universal approximation theorem** (Cybenko, 1989; Hornik, 1991) says one hidden layer
+with enough neurons can approximate any continuous function. It doesn't say how many neurons, or
+that gradient descent will find the weights. In practice **depth** is the cheaper way to buy
+flexibility: each layer can fold the space the previous one produced. Try the **Spiral** with one
+wide layer, then with three layers.
+
+## Activations
+
+Without a non-linearity, stacking layers achieves nothing: a linear function of a linear function
+is still linear, and the network collapses back into logistic regression.
+
+- **sigmoid** squashes to (0, 1). It was the historical default, but its gradient is at most 0.25 and
+  vanishes when saturated, so deep sigmoid networks train slowly.
+- **tanh** is a rescaled sigmoid centred on 0, which usually trains faster.
+- **ReLU**, `max(0, z)`, is the modern default: cheap, and it doesn't saturate for positive inputs.
+  Every ReLU network is piecewise linear, so its boundaries are made of straight segments. Switch
+  to ReLU on the circles and the smooth ring becomes a polygon.
+
+## How it learns
+
+Every weight is adjusted by gradient descent on the cross-entropy loss. The gradient for every
+weight in every layer comes from one backward pass of the chain rule — that's
+[backpropagation](/visualize/backpropagation/). The update rule here is Adam (see
+[optimizers](/visualize/gradient-descent/)), applied after each mini-batch of 10 samples.
+
+Unlike the logistic-regression loss, a network's loss surface is **not convex**. Different starting
+weights can end in different solutions, and occasionally in poor ones: if a spiral run stalls,
+press **New weights** and train again. ReLU networks with a high learning rate are especially
+prone to this: a large update can push a neuron to output 0 for every input, and a "dead" ReLU
+gets no gradient to recover. The opposite failure is a blow-up: set the learning rate to 0.1 on a
+deep network and the loss curve can jump back up after it has already fallen. The steps are
+too big, and the tanh neurons slam into saturation.
+
+## Overfitting, live
+
+Give the **Spiral** 3 layers of 8 tanh neurons and let it run for a thousand epochs or so.
+Training accuracy reaches 100% and training loss heads to zero, while the held-out loss, after
+first falling, turns around and climbs. The network is becoming
+**confidently wrong** on the points it never saw. Its boundary threads through individual training
+points. With ~180 parameters and ~140 training points, it can afford to memorize. The standard
+defences are more data, weight decay, dropout, and stopping when the held-out curve bottoms out
+(early stopping).
+
+## From here to deep learning
+
+This is the same architecture as every deep network, just very small. Scale it up and change the
+wiring to suit the data: [convolutions](/visualize/cnn/) that share weights across an image,
+[attention](/visualize/self-attention/) that routes information between tokens. The training
+loop — forward, loss, backward, update — doesn't change.
+
+> Implementation: `src/lib/ml/mlp.ts`, from scratch: forward pass, backpropagation and Adam in
+> ~200 lines. Weights start with Glorot initialization (He for ReLU). The backward pass is checked
+> against numerical gradients.

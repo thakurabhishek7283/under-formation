@@ -1,0 +1,94 @@
+---
+title: Random Forests & Boosting
+description: One decision tree is jumpy and overfits. A hundred of them, each trained a little differently, vote their way to a smooth, accurate boundary. Bagging, random forests and AdaBoost side by side.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [supervised, ensembles, bagging, random forest, AdaBoost]
+---
+
+import EnsembleViz from '../../components/viz/ml/EnsembleViz.tsx';
+
+A deep [decision tree](/visualize/decision-tree/) fits its training data almost perfectly and
+generalizes badly. Change a few training points and you get a visibly different tree: low bias,
+high variance. Ensembles turn that weakness into a strength. If every tree makes *different*
+mistakes, a vote among many of them cancels the mistakes and keeps what they agree on.
+
+There are two ways to get many different trees. **Bagging** and **random forests** train them
+independently on perturbed data and average them. **Boosting** trains them in sequence, each one
+aimed at what the ensemble still gets wrong.
+
+## Try it
+
+The big map is the whole ensemble; the small maps are its first eight members on their own. Slide
+the number of trees and watch the ensemble boundary smooth out while the individual trees stay
+as jagged as ever.
+
+<EnsembleViz client:visible />
+
+## Bagging: same learner, resampled data
+
+**B**ootstrap **agg**regat**ing** (Breiman, 1996): draw `n` rows *with replacement* from the `n`
+training rows, fit a deep tree to that sample, repeat, and average the trees' votes. Each bootstrap
+sample contains about 63% of the distinct rows (1 − 1/e), with some repeated. Every tree therefore
+sees a slightly different dataset and grows differently. Look at the small maps: same data, eight
+different jagged partitions.
+
+The ~37% of rows a tree *didn't* see are a free validation set. The **out-of-bag error** under
+each small map scores the tree on exactly those rows, so a bagged model estimates its own test
+error without a held-out split.
+
+## Random forests: decorrelate the trees
+
+Averaging `B` models with variance `σ²` and pairwise correlation `ρ` leaves a variance of
+
+```
+ρ·σ² + (1 − ρ)·σ²/B
+```
+
+More trees shrink the second term to nothing, but the first term stays, however many you add.
+The trees in a bagged ensemble are still quite correlated, because they tend to make the same
+strong first splits. **Random forests** (Breiman, 2001) attack `ρ` directly: at every split, a
+tree may only choose among a random subset of features. With two features, the forest here lets
+each split see just one of them, picked at random.
+
+Each individual tree usually gets *worse*. On most of these datasets, XOR and Circles especially,
+the forest's trees have visibly higher out-of-bag errors than the bagged ones. But the trees
+disagree more, so the average improves. It's the central paradox of ensembles: weaker, more
+diverse members can make a stronger committee.
+
+Notice what the accuracy chart does *not* do. Adding trees never makes a forest overfit. The
+held-out curve rises and then flattens, because more trees just give a better estimate of the same
+average. What overfits is depth — try depth 12 against depth 3.
+
+## AdaBoost: fix what's still wrong
+
+Boosting runs the other way round. Start with **stumps**, trees with a single split, which on
+their own are weak learners: on hard data, not much better than guessing. Then (Freund & Schapire, 1997):
+
+1. Train a stump on the weighted data.
+2. Measure its weighted error `ε` and give it a vote `α = ln((1 − ε)/ε)`. Better stumps get a
+   bigger say.
+3. **Increase the weight** of every point it got wrong, renormalize, and go back to step 1.
+
+In AdaBoost mode the small maps show the weights as point sizes. Stump #1 sees every point at the
+same size. By stump #3 the points near the boundary, the ones the earlier stumps kept missing, have
+swollen, and the later stumps concentrate on them. The ensemble is a weighted vote of stumps, so its
+boundary is built from axis-aligned steps. With enough of them it approximates any shape.
+
+Now try **XOR** with depth 1 and watch AdaBoost stall. A sum of stumps is an *additive* model —
+some function of x plus some function of y — and XOR is pure interaction: neither feature means
+anything without the other. Raise the depth to 2 so each learner can capture one interaction, and
+held-out accuracy climbs past 90%.
+
+## Gradient boosting: the modern descendant
+
+AdaBoost turns out to be gradient descent on an exponential loss, one tree per step. **Gradient
+boosting** (Friedman, 2001) makes that explicit and works with any loss: each new tree is fitted
+to the gradient of the loss with respect to the current predictions, usually with a small learning
+rate. Its engineered descendants, XGBoost, LightGBM and CatBoost, remain the strongest
+general-purpose models for **tabular data**, frequently ahead of neural networks. On spreadsheets
+and database tables, the default choice is still a forest of trees.
+
+> Implementation: `src/lib/ml/ensemble.ts`. The trees are CART with Gini impurity and support
+> sample weights. AdaBoost is SAMME, which for two classes is exactly the original algorithm and
+> adds `ln(K − 1)` to each vote for three.
