@@ -1,0 +1,95 @@
+---
+title: Convolutional Neural Networks
+description: Draw a digit and watch a small CNN read it — eight learned filters sliding over the image, max-pooling, and a softmax over ten classes. Trained from scratch, and retrainable in your browser.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [CNN, computer vision, digit recognition, deep learning]
+---
+
+import CnnViz from '../../components/viz/ml/CnnViz.tsx';
+
+Handwritten digits were *the* pattern-recognition benchmark for decades, and convolutional
+networks are what cracked them. LeCun's LeNet was reading the amounts on bank cheques in the
+1990s. The network on this page is a miniature of the same design: small enough to see every
+number it computes, and still accurate.
+
+```
+16×16 image → conv, 8 filters of 3×3 → ReLU → 2×2 max-pool → dense 392 → 10 → softmax
+```
+
+## Try it
+
+Draw a digit in the box, with a mouse, finger or pen. The network sees your drawing cropped,
+scaled into a 12×12 box and centred in 16×16, the same preparation MNIST used. Each of the eight
+cards below is one learned filter: its 3×3 weights, the **feature map** you get by sliding it over
+the image, and that map after max-pooling. The ten bars are the output.
+
+<CnnViz client:visible />
+
+## Why not a plain neural network?
+
+A [fully connected network](/visualize/neural-network/) could read these images too. Flatten the
+256 pixels and feed them in. But it would learn "a vertical stroke at column 7" and "a vertical
+stroke at column 8" as unrelated facts, each with its own weights. A convolution layer builds in
+two things we already know about images:
+
+- **Locality**: a 3×3 filter looks at a small neighbourhood, because nearby pixels are what make up
+  strokes and edges.
+- **Weight sharing**: the same 9 weights are used at every position, so a stroke detector works
+  wherever the stroke is.
+
+The whole convolution layer is 80 parameters, 8 × (9 weights + 1 bias). The detail of how one
+filter slides over an image is on the [convolution & pooling](/visualize/convolution/) page. Here
+the filters aren't hand-designed, they're learned.
+
+## What the filters learn
+
+Look at the eight kernels. They're messier than textbook filters like Sobel, but the patterns are
+there. In the shipped weights, filter 2 is positive across the top row and strongly negative at the
+bottom, so it fires along the lower edge of a horizontal stroke. Filter 4 weighs its left columns
+against its right one, which makes it a vertical-edge detector. Others are mostly negative with a
+positive bias: they respond to *empty paper*, which is information too, since where the ink isn't
+separates a 0 from an 8. Draw a 7 and compare maps: different filters light up on the bar and on
+the diagonal.
+
+After ReLU, **max-pooling** keeps the strongest response in each 2×2 block. The map halves in size
+and a one-pixel shift of the stroke often doesn't change it at all, which gives the network a
+little tolerance to exactly where you drew.
+
+The dense layer then reads all 8 × 7 × 7 = 392 pooled values and scores each digit, like a
+logistic regression over detected strokes. Of the model's 4,010 parameters, 3,930 are here.
+
+## Watch it learn
+
+**Retrain from scratch** throws the weights away and trains a new network in your browser: 8,000
+generated digits, 5 passes, Adam — a few seconds on a laptop. The filters start as random noise
+and sharpen into stroke detectors as the loss drops. Run it twice. Different random starts give
+*different* filters and about the same accuracy. There are many equally good ways to split the
+work between eight detectors.
+
+## Where the training data comes from
+
+There's no dataset download here. The digits are **generated**: each is a few pen strokes (a
+couple of common ways of writing each digit), bent by a random rotation, slant, stretch and
+wobble, then drawn at a random pen width. The held-out accuracy is measured on 500 more of them,
+from a different random seed and with extra distortion.
+
+That's also the honest limit of this demo. The network has only seen *this generator's*
+handwriting. It reads normal digits well, but an unusual style it never saw (a heavily slanted 1, or a 9 with a curled
+tail) can fool it. This is
+**distribution shift**, the same thing that trips up much larger models when real-world data
+doesn't look like their training set.
+
+## Scaling up
+
+Real vision networks stack this block many times. Each layer's filters work on the previous
+layer's feature maps rather than on pixels, so the **receptive field** grows. The first layer sees
+3×3 pixels, the next effectively 5×5 or more, and a few layers in, a single unit responds to a
+whole digit part or, in a photo, a whole eye. AlexNet (2012) did this at scale on ImageNet with
+GPUs, and set off the deep-learning era. Vision transformers have since replaced the fixed local
+window with [attention](/visualize/self-attention/), but convolutions are still everywhere
+cameras are.
+
+> Implementation: `src/lib/ml/cnn.ts` (forward pass, backpropagation through the max-pool and
+> ReLU, Adam, and the stroke generator). `scripts/train-cnn.mjs` produced the shipped weights,
+> deterministically: `npm run train:cnn` reproduces them.

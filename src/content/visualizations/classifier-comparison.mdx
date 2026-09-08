@@ -1,0 +1,84 @@
+---
+title: Classifier Comparison
+description: Eight classic classifiers, five datasets, forty models trained in your browser. The shapes each one can and can't draw tell you more about it than any accuracy table.
+pubDate: 2026-09-26
+category: Classification & pattern recognition
+tags: [supervised, model selection, inductive bias, comparison]
+---
+
+import ClassifierZooViz from '../../components/viz/ml/ClassifierZooViz.tsx';
+
+Every classifier makes assumptions about what a boundary is allowed to look like. That's its
+**inductive bias**. It's what lets a model generalize from finite data at all, and it's also what
+makes it fail on the wrong problem. The fastest way to understand the classic methods is to run
+all of them on the same data and look at what they draw, like scikit-learn's well-known comparison
+plot.
+
+## The grid
+
+Each row is one method (click its name for the full interactive page). Each column is one dataset.
+Every cell is a model trained just now, with the held-out accuracy in its corner. Hover a cell for
+training accuracy and fit time. **New data** draws a fresh sample and retrains all forty.
+
+<ClassifierZooViz client:visible />
+
+## Reading it by column
+
+- **Two blobs** is the easy case. Everything gets roughly the same score, and the remaining errors
+  are points that sit inside the other class's cloud, which no classifier can fix. When the
+  simplest model is as good as the fanciest, use the simplest.
+- **Moons** separates the models that can bend from the ones that can't. Logistic regression and
+  the linear SVM draw their best straight line and stop in the 80s or low 90s.
+- **Circles**: no line gets anywhere near, and the two linear models drop to about coin-flip level.
+  Naive Bayes, surprisingly, is fine: per-class Gaussians with different spreads give a closed
+  curve for free.
+- **XOR** is the interaction test. The linear models fail, and so does Naive Bayes: each feature
+  *alone* is identically distributed in both classes, and Naive Bayes only ever looks at features
+  alone. A single greedy decision tree can also get stuck on some draws, when no first split has
+  any gain (the trap described on the [decision tree](/visualize/decision-tree/) page).
+- **Spiral** needs a boundary that winds. The local methods (k-NN, RBF SVM) handle it best. The
+  forest does well, and the network gets most of it in its 300 training epochs, while the linear
+  models and Naive Bayes barely beat guessing.
+
+## Reading it by row
+
+| Method | Boundary it draws | Training | Prediction | Reach for it when |
+|---|---|---|---|---|
+| [k-NN](/visualize/knn/) | anything, locally | none | slow: `O(n)` per query | small data, a meaningful distance |
+| [Logistic regression](/visualize/logistic-regression/) | straight line | fast, convex | instant | a baseline, calibrated probabilities, explanations |
+| [Linear SVM](/visualize/svm/) | straight line, max margin | fast | instant | high-dimensional sparse data (text) |
+| [RBF SVM](/visualize/svm/) | smooth, any shape | `O(n²)`–`O(n³)` | per support vector | small-to-medium data, good features |
+| [Naive Bayes](/visualize/naive-bayes/) | axis-aligned conics | one counting pass | instant | text, tiny data, a quick baseline |
+| [Decision tree](/visualize/decision-tree/) | axis-aligned staircase | fast | instant | you need to read the model |
+| [Random forest](/visualize/random-forest/) | smoothed staircase | parallel trees | per tree | tabular data, little tuning |
+| [Neural network](/visualize/neural-network/) | anything, learned | slowest, non-convex | instant | lots of data, images/text/audio ([CNN](/visualize/cnn/)) |
+
+Look along the rows for signatures. The tree's boundaries are always horizontal and vertical
+steps, even on the circles. The forest's are the same steps, averaged into something smoother.
+k-NN's regions wrap around individual points. The SVM's and the network's are smooth curves.
+
+## No free lunch
+
+No row wins every column, and that's not a flaw of these particular datasets. The **no free lunch
+theorem** (Wolpert, 1996) says that averaged over *all* possible problems, every classifier does
+equally well. A method is only better *for a kind of problem*, because its assumptions match that
+kind. The practical version:
+
+- Try the simple model first. If logistic regression is within a point of everything else, ship
+  it.
+- On **tabular** data, gradient-boosted trees and random forests are the ones to beat.
+- On **images, audio and text**, learned representations (CNNs, transformers) win by a wide
+  margin, because a hand-built feature space can't compete with one learned from millions of
+  examples.
+
+## Take the numbers with a pinch of salt
+
+Each cell is one random split of 160 points, with a 48-point test set, so a single test point is
+worth about 2%. Press **New data** a few times: a difference of a couple of points between two
+methods on one draw means nothing. Real comparisons use cross-validation over several splits.
+Every model here also uses fixed, reasonable settings; tuning `k`, `C`, `γ` or depth per dataset
+would move several cells.
+
+> Implementation: `src/lib/ml/zoo.ts` puts every classifier from the series behind one
+> `fit → predict` interface. The SVMs use one-vs-rest for three classes. Logistic regression is the
+> neural network with no hidden layer.
