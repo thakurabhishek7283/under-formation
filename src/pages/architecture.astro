@@ -1,0 +1,1327 @@
+---
+// Internal notes: how this site is wired together, and the recipes for adding to it.
+// Not linked from the nav and excluded from the sitemap (see astro.config.mjs).
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const SECTIONS = [
+  { id: 'overview', label: 'The short version' },
+  { id: 'pipeline', label: 'Build pipeline' },
+  { id: 'layers', label: 'The four layers' },
+  { id: 'content', label: 'Collections & routing' },
+  { id: 'patterns', label: 'Two visualization patterns' },
+  { id: 'codepanel', label: 'The code panel' },
+  { id: 'determinism', label: 'Hydration rules' },
+  { id: 'design', label: 'Styling & tokens' },
+  { id: 'add-viz', label: 'Add a visualization' },
+  { id: 'add-blog', label: 'Add a blog post' },
+  { id: 'add-project', label: 'Add a project' },
+  { id: 'gotchas', label: 'Gotchas checklist' },
+  { id: 'map', label: 'File map' },
+];
+
+const COLLECTIONS = [
+  {
+    name: 'blog',
+    dir: 'src/content/blog/',
+    ext: '.md / .mdx',
+    route: '/blog/<file-name>/',
+    required: 'title, description, pubDate',
+    optional: 'updatedDate, tags[], draft',
+  },
+  {
+    name: 'projects',
+    dir: 'src/content/projects/',
+    ext: '.md / .mdx',
+    route: '/projects/<file-name>/',
+    required: 'title, description, date',
+    optional: 'tech[], status, featured, repo, demo{url,embed,height}, draft',
+  },
+  {
+    name: 'visualizations',
+    dir: 'src/content/visualizations/',
+    ext: '.mdx',
+    route: '/visualize/<file-name>/',
+    required: 'title, description, pubDate, category',
+    optional: 'tags[], draft',
+  },
+];
+
+const PATTERNS = [
+  {
+    name: 'Trace + player',
+    what:
+      'The algorithm records a full snapshot plus a one-line message at every interesting step. The component is a pure renderer of steps[index]; usePlayer moves the index.',
+    hooks: 'usePlayer + PlayerControls (+ CodePanel)',
+    where:
+      'sorting, segment tree, Fenwick tree, KMP, BPE, k-means, decision tree, backprop, convolution, KV cache, transformer',
+  },
+  {
+    name: 'Parameters + recompute',
+    what:
+      'No timeline. The reader moves sliders or edits an input, the whole result is recomputed in a useMemo and drawn in one shot.',
+    hooks: 'useState + useMemo (+ Heatmap / LineChart)',
+    where:
+      'Bloom filter, HyperLogLog, attention, positional encoding, sampling, quantization, LoRA, metrics, optimizers, overfitting',
+  },
+];
+
+const schemaCode = `const visualizations = defineCollection({
+  loader: glob({ base: './src/content/visualizations', pattern: '**/*.{md,mdx}' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    pubDate: z.coerce.date(),
+    // Groups cards on /visualize, e.g. "Probabilistic data structures".
+    category: z.string(),
+    tags: z.array(z.string()).default([]),
+    draft: z.boolean().default(false),
+  }),
+});`;
+
+const routeCode = `export async function getStaticPaths() {
+  const viz = await getVisualizations();          // sorted, drafts filtered
+  return viz.map((entry) => ({ params: { id: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);          // the MDX body, as a component
+---
+<ArticleLayout title={entry.data.title} eyebrow={entry.data.category} ...>
+  <Content />
+</ArticleLayout>`;
+
+const draftCode = `// Drafts are visible in \`npm run dev\` but excluded from production builds.
+const visible = ({ data }) => import.meta.env.DEV || !data.draft;`;
+
+const algoCode = `// src/lib/algorithms/countMinSketch.ts  —  plain TypeScript, no React
+
+import { listing, type CodeCursor } from '../code';
+
+export interface CmsStep {
+  counters: number[][];
+  message: string;      // narration shown under the transport controls
+  code: CodeCursor;     // which listing line this step is executing
+}
+
+export const CMS_CODE = listing(\`
+  function add(item, counters) {              //@ fn
+    for (let r = 0; r < d; r++) {             //@ loop
+      const c = hash(item, r) % w;            //@ hash
+      counters[r][c]++;                       //@ bump
+    }
+  }
+\`);
+
+export function addSteps(cms, item): CmsStep[] {
+  const steps: CmsStep[] = [];
+  const push = (message, code) =>
+    steps.push({ counters: cms.counters.map((r) => [...r]), message, code });
+
+  push('Hash the item once per row.', { line: 'fn', vars: { item } });
+  for (let r = 0; r < cms.d; r++) {
+    const c = hash(item, r) % cms.w;
+    push('Row ' + r + ' lands in column ' + c + '.', { line: 'hash', vars: { r, c } });
+    cms.counters[r][c]++;
+    push('Bump that counter.', { line: 'bump', vars: { r, c } });
+  }
+  return steps;
+}`;
+
+const islandCode = `// src/components/viz/CountMinSketchViz.tsx  —  the React island
+
+import { useMemo, useState } from 'react';
+import { CMS_CODE, addSteps, build, type CmsStep } from '../../lib/algorithms/countMinSketch';
+import { usePlayer } from './usePlayer';
+import { PlayerControls } from './PlayerControls';
+import { CodePanel } from './CodePanel';
+import { Stat } from './Stat';
+import './viz.css';
+
+export default function CountMinSketchViz({ width = 16, depth = 4 }) {
+  const [item, setItem] = useState('alice');
+  const steps = useMemo(() => addSteps(build(width, depth), item), [width, depth, item]);
+  const player = usePlayer<CmsStep>(steps);
+  const step = player.step;
+
+  return (
+    <div className="viz" aria-label="Count-min sketch visualization">
+      <div className="viz-row">
+        <input className="input mono" value={item} onChange={(e) => setItem(e.target.value)} />
+      </div>
+
+      <div className="viz-split">
+        <div>{/* the picture: viz-cells / viz-cell, SVG, bars ... */}</div>
+        <CodePanel
+          listing={CMS_CODE}
+          cursor={step.code}
+          previous={player.steps[player.index - 1]?.code}
+          title="add(item)"
+        />
+      </div>
+
+      <PlayerControls player={player} message={step.message} />
+
+      <div className="viz-stats">
+        <Stat k="Rows" v={String(depth)} />
+        <Stat k="Width" v={String(width)} />
+      </div>
+    </div>
+  );
+}`;
+
+const mdxCode = `---
+title: Count-Min Sketch
+description: Frequency estimates for a stream in sub-linear space.
+pubDate: 2026-10-01
+category: Probabilistic data structures
+tags: [hashing, streaming]
+---
+
+import CountMinSketchViz from '../../components/viz/CountMinSketchViz.tsx';
+
+Intro prose. Plain Markdown, rendered inside \`.prose\` at a 44rem reading width.
+
+## Try it
+
+<CountMinSketchViz client:visible width={16} depth={4} />
+
+Explanation after the widget.`;
+
+const blogCode = `---
+title: My post
+description: One-sentence summary, used on the card and in <meta>.
+pubDate: 2026-10-01
+tags: [go, databases]
+draft: true      # visible in dev, hidden in production until removed
+---
+
+Markdown. Fenced code blocks are highlighted at build time by Shiki
+(github-light / github-dark, configured in astro.config.mjs).
+
+Use the .mdx extension if you want to import components.`;
+
+const projectCode = `---
+title: My App
+description: What it does.
+date: 2026-10-01
+tech: [Go, React]          # rendered as the tag row
+status: live               # live | wip | archived -> the eyebrow label
+featured: true             # sorts to the top of /projects/
+repo: https://github.com/you/my-app
+demo:
+  url: https://my-app.vercel.app
+  embed: true              # renders <DemoFrame> in an iframe above the prose
+  height: 600
+---
+
+## What it is
+
+Prose. Full MDX, so an in-browser demo works here too:
+
+<MyDemo client:visible />`;
+
+const listingCode = `// 1. Write the DISPLAY source and tag lines with trailing markers.
+export const MY_CODE = listing(\`
+  function f(a, lo, hi) {                     //@ fn
+    if (lo >= hi) return;   // 1 item: done   //@ base
+    const mid = (lo + hi) >> 1;               //@ mid
+  }
+\`);
+
+// 2. Every recorded step names a marker and the variables in scope there.
+rec.push('Split the range in half.', { line: 'mid', vars: { lo, hi, mid } });
+
+// 3. The panel highlights that line and diffs vars against the previous step.
+<CodePanel listing={MY_CODE} cursor={step.code}
+           previous={player.steps[player.index - 1]?.code} />`;
+
+const determinismCode = `import { rng } from '../../lib/ml/math';
+import { pct, r1 } from './num';
+
+// Seeded, so the build machine and the browser produce the same "random" weights.
+const r = rng(42);
+
+// Rounded, so the numbers serialize identically on both sides.
+<div style={{ width: pct(count / total) }} />
+<circle cx={r1(x)} cy={r1(y)} />
+
+// A fixed first array; randomize only in response to a click.
+const [input, setInput] = useState(() =>
+  Array.from({ length: n }, (_, i) => ((i * 37 + 11) % 89) + 8));`;
+
+const playerCode = `const player = usePlayer<MyStep>(steps);         // play / pause / seek / speed
+useEffect(() => player.load(steps), [steps]);   // params changed -> new trace
+player.load(next, true);                        // after an op: replace + autoplay
+
+<PlayerControls player={player} message={player.step.message} />`;
+
+const splitCode = `<div className="viz-split">
+  <div>{/* the visual */}</div>
+  <CodePanel listing={MY_CODE} cursor={step.code}
+             previous={player.steps[player.index - 1]?.code} title="merge sort" />
+</div>`;
+
+const treeCode = `src/
+  consts.ts              name, tagline, email, socials, nav links
+  content.config.ts      the three collection schemas (Zod)
+
+  content/
+    blog/                *.md|mdx  -> /blog/<name>/
+    projects/            *.md|mdx  -> /projects/<name>/
+    visualizations/      *.mdx     -> /visualize/<name>/   (22 pages)
+
+  lib/                   PURE TYPESCRIPT — zero React imports
+    content.ts           getPosts / getProjects / getVisualizations + draft filter
+    code.ts              listing() markers + tokenize() for the code panel
+    algorithms/          sorting, segmentTree, fenwickTree, kmp,
+                         bloomFilter, hyperLogLog, hash
+    ml/                  math (rng), attention, transformer, bpe, sampling,
+                         kvCache, autograd, optimizers, lora, quantization,
+                         kmeans, decisionTree, convolution, regression,
+                         metrics, positional
+
+  components/
+    Card · Header · Footer · FormattedDate · DemoFrame      (.astro)
+    viz/
+      usePlayer.ts       trace playback: play / pause / seek / speed
+      PlayerControls.tsx transport + narration + keyboard a11y
+      CodePanel.tsx      source with the executing line highlighted
+      Stat.tsx           one stat tile
+      viz.css            the shared class vocabulary
+      *Viz.tsx           the algorithm islands
+      ml/
+        Heatmap.tsx      matrices, sequential or diverging, tooltips, masking
+        LineChart.tsx    loss curves, hover crosshair, optional log scale
+        num.ts           pct() / r1() — hydration-safe rounding
+        useThemeTick.ts  re-render canvases when the theme changes
+        ml.css
+        *Viz.tsx
+
+  layouts/
+    BaseLayout.astro     <head>, pre-paint theme script, header/footer shell
+    ArticleLayout.astro  title block, date, tags, back link, .prose wrapper
+
+  pages/
+    index.astro          home
+    blog/ projects/ visualize/    index.astro + [...id].astro each
+    rss.xml.ts           feed
+    404.astro
+    architecture.astro   this page
+
+  styles/global.css      design tokens (3 theme blocks) + shared controls`;
+---
+
+<BaseLayout
+  title="Architecture"
+  description="How this site is wired together: the build pipeline, the visualization layers, and the recipes for adding a visualization, a post or a project."
+  noindex
+>
+  <div class="container shell">
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <ol>
+        {SECTIONS.map((s) => <li><a href={`#${s.id}`}>{s.label}</a></li>)}
+      </ol>
+    </nav>
+
+    <article class="doc">
+      <header class="doc-head">
+        <p class="eyebrow">Internals</p>
+        <h1>How this site is built</h1>
+        <p class="lede muted">
+          A static Astro site with React islands. Prose lives in MDX, algorithms live in plain
+          TypeScript, and the two meet in a React component that the MDX imports and that hydrates
+          only when it scrolls into view. Everything below is what the code does today:
+          <span class="n">22</span> visualization pages, <span class="n">21</span> visualization
+          components, <span class="n">5</span> shared building blocks and
+          <span class="n">23</span> algorithm modules.
+        </p>
+      </header>
+
+      <section id="overview">
+        <h2><span class="num">01</span> The short version</h2>
+        <p>Four ideas explain almost every file under <code>src/</code>.</p>
+        <ol class="big-list">
+          <li>
+            <strong>Content is data.</strong> Every page of prose is a file in
+            <code>src/content/</code>. A Zod schema in <code>src/content.config.ts</code> validates
+            its frontmatter at build time, so a typo in a date fails the build instead of the page.
+          </li>
+          <li>
+            <strong>Routes are generated, never hand-written.</strong> Three dynamic routes
+            (<code>[...id].astro</code>) walk their collection and emit one HTML file per entry.
+            You never touch <code>src/pages/</code> to publish something.
+          </li>
+          <li>
+            <strong>Algorithms are pure TypeScript.</strong> Nothing under <code>src/lib/</code>
+            imports React — that holds across all 23 modules. They take input and return either a
+            result or an array of <em>steps</em>. That is what makes them testable, and reusable by
+            more than one page.
+          </li>
+          <li>
+            <strong>Interactivity is opt-in, per component.</strong> The site ships as static HTML
+            with no JavaScript. A <code>client:visible</code> directive on one component is the only
+            thing that loads a React bundle — for that component alone, when the reader reaches it.
+          </li>
+        </ol>
+      </section>
+
+      <section id="pipeline">
+        <h2><span class="num">02</span> Build pipeline</h2>
+        <p>
+          <code>npm run build</code> runs this once per entry and writes plain HTML into
+          <code>dist/</code>. Nothing runs on a server afterwards.
+        </p>
+
+        <div class="fig">
+          <svg viewBox="0 0 910 340" role="img" aria-labelledby="pipe-title">
+            <title id="pipe-title"
+              >MDX files are validated by a Zod schema, sorted and draft-filtered by a helper, turned
+              into routes by getStaticPaths and rendered through the layouts into static HTML; React
+              islands hydrate later, in the browser.</title
+            >
+            <defs>
+              <marker
+                id="ar"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" class="arrow-head"></path>
+              </marker>
+            </defs>
+
+            <g class="box">
+              <rect x="10" y="30" width="150" height="72" rx="8"></rect>
+              <text x="85" y="59" class="bt">content/*.mdx</text>
+              <text x="85" y="79" class="bs">frontmatter + prose</text>
+            </g>
+            <g class="box">
+              <rect x="195" y="30" width="150" height="72" rx="8"></rect>
+              <text x="270" y="59" class="bt">content.config</text>
+              <text x="270" y="79" class="bs">Zod validates</text>
+            </g>
+            <g class="box">
+              <rect x="380" y="30" width="150" height="72" rx="8"></rect>
+              <text x="455" y="59" class="bt">lib/content.ts</text>
+              <text x="455" y="79" class="bs">sort · drop drafts</text>
+            </g>
+            <g class="box">
+              <rect x="565" y="30" width="150" height="72" rx="8"></rect>
+              <text x="640" y="59" class="bt">pages/[...id]</text>
+              <text x="640" y="79" class="bs">getStaticPaths</text>
+            </g>
+            <g class="box">
+              <rect x="750" y="30" width="150" height="72" rx="8"></rect>
+              <text x="825" y="59" class="bt">layouts</text>
+              <text x="825" y="79" class="bs">Base · Article</text>
+            </g>
+
+            <line x1="162" y1="66" x2="191" y2="66" class="edge" marker-end="url(#ar)"></line>
+            <line x1="347" y1="66" x2="376" y2="66" class="edge" marker-end="url(#ar)"></line>
+            <line x1="532" y1="66" x2="561" y2="66" class="edge" marker-end="url(#ar)"></line>
+            <line x1="717" y1="66" x2="746" y2="66" class="edge" marker-end="url(#ar)"></line>
+
+            <path d="M 825 104 L 825 140 L 455 140 L 455 164" class="edge" marker-end="url(#ar)"></path>
+
+            <g class="box strong">
+              <rect x="330" y="166" width="250" height="60" rx="8"></rect>
+              <text x="455" y="192" class="bt">dist/**/index.html</text>
+              <text x="455" y="211" class="bs">static · 0 KB JavaScript</text>
+            </g>
+
+            <text x="455" y="256" class="axis">the browser loads that HTML, and then…</text>
+
+            <g class="box dash">
+              <rect x="120" y="272" width="230" height="56" rx="8"></rect>
+              <text x="235" y="296" class="bt">client:visible</text>
+              <text x="235" y="315" class="bs">observer fires on scroll</text>
+            </g>
+            <g class="box dash">
+              <rect x="400" y="272" width="200" height="56" rx="8"></rect>
+              <text x="500" y="296" class="bt">island bundle</text>
+              <text x="500" y="315" class="bs">that component only</text>
+            </g>
+            <g class="box dash">
+              <rect x="650" y="272" width="210" height="56" rx="8"></rect>
+              <text x="755" y="296" class="bt">React hydrates</text>
+              <text x="755" y="315" class="bs">the widget goes live</text>
+            </g>
+            <line x1="352" y1="300" x2="396" y2="300" class="edge" marker-end="url(#ar)"></line>
+            <line x1="602" y1="300" x2="646" y2="300" class="edge" marker-end="url(#ar)"></line>
+          </svg>
+        </div>
+
+        <h3>What each stage does</h3>
+        <dl class="steps">
+          <div>
+            <dt><code>src/content.config.ts</code></dt>
+            <dd>
+              Declares the three collections with Astro's <code>glob()</code> loader. The
+              <strong>file name becomes the entry <code>id</code></strong>, which becomes the URL
+              slug. The Zod schema is the single source of truth for what frontmatter is legal.
+            </dd>
+          </div>
+          <div>
+            <dt><code>src/lib/content.ts</code></dt>
+            <dd>
+              Three thin accessors — <code>getPosts()</code>, <code>getProjects()</code>,
+              <code>getVisualizations()</code> — that apply sorting and the draft rule in one place,
+              so no page has to remember either.
+              <pre class="code"><code>{draftCode}</code></pre>
+              Posts and visualizations sort newest first; projects sort <code>featured</code> first,
+              then by date.
+            </dd>
+          </div>
+          <div>
+            <dt><code>src/pages/**/[...id].astro</code></dt>
+            <dd>
+              <code>getStaticPaths()</code> returns one <code>params.id</code> per entry, and
+              <code>render(entry)</code> turns the MDX body into a <code>&lt;Content /&gt;</code>
+              component. That is the entire route file — all three look like this.
+            </dd>
+          </div>
+          <div>
+            <dt><code>src/layouts/</code></dt>
+            <dd>
+              <code>BaseLayout</code> owns <code>&lt;head&gt;</code>: title, canonical URL, RSS and
+              sitemap links, and an inline script that applies the saved theme
+              <em>before first paint</em> so there is no flash. <code>ArticleLayout</code> wraps it
+              with the title block, date, tag row, a <code>back</code> link and the
+              <code>.prose</code> container.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section id="layers">
+        <h2><span class="num">03</span> The four layers</h2>
+        <p>
+          A visualization page is four files, each depending only on the one below it. Read bottom
+          to top and it is just: maths → picture → words → URL.
+        </p>
+
+        <ol class="layers">
+          <li>
+            <span class="tag lay">route</span>
+            <div>
+              <code>src/pages/visualize/[...id].astro</code>
+              <p>Generic, already exists. You never edit it to add a visualization.</p>
+            </div>
+          </li>
+          <li>
+            <span class="tag lay">prose</span>
+            <div>
+              <code>src/content/visualizations/merge-sort.mdx</code>
+              <p>
+                Frontmatter plus explanation, one <code>import</code> line, and one
+                <code>&lt;SortingViz client:visible /&gt;</code> tag where the widget belongs.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="tag lay">island</span>
+            <div>
+              <code>src/components/viz/SortingViz.tsx</code>
+              <p>
+                React. Owns controls, layout and colour. Contains no algorithm — it renders whatever
+                the layer below hands it.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="tag lay">logic</span>
+            <div>
+              <code>src/lib/algorithms/sorting.ts</code>
+              <p>
+                Pure TypeScript, returns <code>SortStep[]</code>. This one module feeds both
+                <code>/visualize/merge-sort/</code> and <code>/visualize/quick-sort/</code>.
+              </p>
+            </div>
+          </li>
+        </ol>
+
+        <p class="rule">
+          <strong>The rule that keeps this honest:</strong> nothing under <code>src/lib/</code> may
+          import React. If you reach for <code>useState</code> in an algorithm file, that state
+          belongs in the island. If you write an indexed <code>for</code> loop inside a component,
+          it probably belongs in <code>lib/</code>.
+        </p>
+
+        <p>
+          The ML and LLM material is the same shape one directory over:
+          <code>src/lib/ml/</code> and <code>src/components/viz/ml/</code>, with
+          <code>ml.css</code> alongside <code>viz.css</code>.
+        </p>
+      </section>
+
+      <section id="content">
+        <h2><span class="num">04</span> Collections &amp; routing</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Collection</th><th>Directory</th><th>Route</th><th>Required</th><th>Optional</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                COLLECTIONS.map((c) => (
+                  <tr>
+                    <td><code>{c.name}</code></td>
+                    <td>
+                      <code>{c.dir}</code>
+                      <br />
+                      <span class="muted sm">{c.ext}</span>
+                    </td>
+                    <td><code>{c.route}</code></td>
+                    <td class="sm">{c.required}</td>
+                    <td class="sm muted">{c.optional}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The visualization schema, verbatim — this is the contract your frontmatter has to satisfy:
+        </p>
+        <pre class="code"><code>{schemaCode}</code></pre>
+
+        <p>
+          <code>category</code> is required because <code>/visualize/</code> groups its cards with
+          <code>Map.groupBy(all, (v) =&gt; v.data.category)</code>. A new category string creates a
+          new section on that page automatically; reuse an existing string to file the card under it.
+        </p>
+
+        <p>And the whole route file it feeds:</p>
+        <pre class="code"><code>{routeCode}</code></pre>
+
+        <p>
+          The index pages (<code>/blog/</code>, <code>/projects/</code>, <code>/visualize/</code>)
+          and <code>/rss.xml</code> read the same accessors, so one new file shows up everywhere at
+          once.
+        </p>
+      </section>
+
+      <section id="patterns">
+        <h2><span class="num">05</span> Two visualization patterns</h2>
+        <p>
+          Every widget on the site is one of these two. Decide which one fits the idea you are
+          teaching before writing code — they lead to very different modules.
+        </p>
+
+        {
+          PATTERNS.map((p) => (
+            <div class="pattern">
+              <h3>{p.name}</h3>
+              <p>{p.what}</p>
+              <p class="sm"><strong>Hooks:</strong> <code>{p.hooks}</code></p>
+              <p class="sm muted"><strong>Used by:</strong> {p.where}</p>
+            </div>
+          ))
+        }
+
+        <h3>How the trace pattern works</h3>
+        <p>
+          The algorithm module keeps a <code>Recorder</code> that pushes a full snapshot — the
+          array, the pointers, the counters, a one-line <code>message</code> and a
+          <code>CodeCursor</code> — at every interesting line. The component never runs the
+          algorithm incrementally; it renders <code>steps[index]</code>.
+        </p>
+        <pre class="code"><code>{playerCode}</code></pre>
+        <p class="sm muted">
+          <code>usePlayer</code> returns <code>steps, step, index, last, playing, speedIdx,
+          setSpeedIdx, load, toggle, seek</code>. Speeds are steps per second, 0.5 → 64.
+          <code>PlayerControls</code> adds the transport buttons, a scrubber, the speed select, an
+          <code>aria-live</code> caption and arrow-key / space shortcuts once focused.
+        </p>
+      </section>
+
+      <section id="codepanel">
+        <h2><span class="num">06</span> The code panel</h2>
+        <p>
+          This is what makes these pages teach rather than merely animate: the algorithm's source
+          sits beside the picture, the executing line is highlighted, and the variables in scope are
+          listed underneath with anything that just changed outlined. The reader can see
+          <em>which line</em> produced the change.
+        </p>
+        <pre class="code"><code>{listingCode}</code></pre>
+        <p>
+          <code>listing()</code> in <code>src/lib/code.ts</code> dedents the source, strips the
+          <code>//@ name</code> markers and records which line indices each name tags.
+          <code>tokenize()</code> does a small hand-rolled syntax highlight, so the panel reads as
+          code without shipping a highlighter to the browser.
+        </p>
+        <ul class="checks">
+          <li><strong>Markers, not line numbers</strong> — the trace survives reformatting.</li>
+          <li><strong>Repeat a marker</strong> on two lines to highlight a wrapped statement as one unit.</li>
+          <li>
+            <strong>Keep display lines to 46 columns.</strong> The panel is a fixed column
+            (<code>minmax(23rem, 0.9fr)</code>); longer lines clip.
+          </li>
+          <li>
+            <strong>Several operations?</strong> Export one listing per operation (build / query /
+            update), pass a map, and let <code>cursor.listing</code> pick. Variables are only diffed
+            within the same listing.
+          </li>
+          <li>
+            <strong>The listing is display code.</strong> Write the clearest version, not the traced
+            implementation — it may differ in structure as long as it doesn't lie about what the
+            step does.
+          </li>
+        </ul>
+      </section>
+
+      <section id="determinism">
+        <h2><span class="num">07</span> Hydration rules</h2>
+        <p>
+          Islands render <em>twice</em>: once on the build machine into static HTML, once in the
+          browser when React takes over. If the two disagree, React discards the server markup and
+          you get a flicker or a console error. Three rules prevent it.
+        </p>
+        <pre class="code"><code>{determinismCode}</code></pre>
+        <ol class="big-list">
+          <li>
+            <strong>No <code>Math.random()</code> in render.</strong> Anything random that is visible
+            on first paint comes from the seeded <code>rng()</code> (mulberry32) in
+            <code>src/lib/ml/math.ts</code>.
+          </li>
+          <li>
+            <strong>Round every number that reaches markup</strong> with <code>pct()</code> /
+            <code>r1()</code> from <code>src/components/viz/ml/num.ts</code>. An unrounded float can
+            serialize as <code>127.371147280916</code> on one side and
+            <code>127.37114728091598</code> on the other.
+          </li>
+          <li>
+            <strong>No <code>Date.now()</code> and no <code>window</code> during render.</strong>
+            Touch the DOM in <code>useEffect</code> only. Canvas code that reads CSS variables uses
+            <code>useThemeTick()</code> + <code>cssColor()</code> to re-read them when the theme
+            flips.
+          </li>
+        </ol>
+      </section>
+
+      <section id="design">
+        <h2><span class="num">08</span> Styling &amp; tokens</h2>
+        <p>
+          <code>src/styles/global.css</code> defines every colour as a CSS variable three times: a
+          light <code>:root</code> block, a <code>@media (prefers-color-scheme: dark)</code> block
+          guarded by <code>:root:not([data-theme='light'])</code>, and an explicit
+          <code>:root[data-theme='dark']</code> block for the manual toggle. Never hard-code a hex
+          value in a component — use the token and dark mode comes free.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Token family</th><th>Use it for</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>--bg --surface --surface-2 --border</code></td>
+                <td>Backgrounds and dividers</td>
+              </tr>
+              <tr>
+                <td><code>--text --text-2 --text-3</code></td>
+                <td>Primary / secondary / muted text</td>
+              </tr>
+              <tr>
+                <td><code>--role-compare --role-change --role-done --role-idle</code></td>
+                <td>Step roles: looking at · writing or mismatch · settled · untouched</td>
+              </tr>
+              <tr>
+                <td><code>--cat-1 --cat-2 --cat-3</code></td>
+                <td>
+                  Series identity. There is deliberately no 4th — beyond three, distinguish by shape,
+                  a direct label or faceting
+                </td>
+              </tr>
+              <tr>
+                <td><code>--seq-0</code> … <code>--seq-7</code></td>
+                <td>Magnitude ramp (blue, light → dark)</td>
+              </tr>
+              <tr>
+                <td><code>--div-neg --div-mid --div-pos</code></td>
+                <td>Signed values: weights, activations, gradients</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="rule">
+          Always pair a colour with a legend entry or a text label. The palette is validated for
+          colour-blind safety in both themes, not for standing alone.
+        </p>
+
+        <h3>Class vocabulary</h3>
+        <p>
+          <code>viz.css</code> and <code>ml/ml.css</code> already carry the shared shapes. Reuse them
+          instead of writing new CSS:
+        </p>
+        <ul class="chips">
+          <li><code>.viz</code> outer card</li>
+          <li><code>.viz-split</code> picture + code</li>
+          <li><code>.viz-row</code> control row</li>
+          <li><code>.viz-slider</code></li>
+          <li><code>.viz-seg</code> segmented buttons</li>
+          <li><code>.viz-cells</code> / <code>.viz-cell</code></li>
+          <li><code>.viz-stats</code></li>
+          <li><code>.viz-legend</code></li>
+          <li><code>.viz-verdict</code></li>
+          <li><code>.viz-label</code></li>
+          <li><code>.viz-svg</code></li>
+          <li><code>.btn</code> / <code>.input</code></li>
+        </ul>
+        <p class="sm muted">
+          Shared React pieces: <code>&lt;Stat&gt;</code>, <code>&lt;PlayerControls&gt;</code>,
+          <code>&lt;CodePanel&gt;</code>, and for ML <code>&lt;Heatmap&gt;</code> +
+          <code>&lt;ScaleLegend&gt;</code> (sequential or diverging matrices with tooltips and
+          masking) and <code>&lt;LineChart&gt;</code> (loss curves with a hover crosshair and an
+          optional log scale).
+        </p>
+
+        <h3>Width</h3>
+        <p>
+          Inside <code>.prose</code>, direct children are capped at <code>44rem</code> for
+          readability. Islands escape that automatically, because Astro wraps them in a
+          <code>display:contents</code> <code>&lt;astro-island&gt;</code> element. For a wide
+          <em>Astro</em> component, wrap it in <code>&lt;div class="wide"&gt;</code> — that is how
+          the project pages make <code>DemoFrame</code> full width.
+        </p>
+      </section>
+
+      <section id="add-viz">
+        <h2><span class="num">09</span> Add a visualization</h2>
+        <p class="recipe-note">
+          Three new files, zero edits to existing ones. Count-Min Sketch as the worked example.
+        </p>
+
+        <h3><span class="step">1</span> The algorithm</h3>
+        <p>
+          <code>src/lib/algorithms/countMinSketch.ts</code> — plain TypeScript. Shared helpers
+          (hashes, matrix maths) go in <code>hash.ts</code> / <code>ml/math.ts</code>. If you want
+          the code panel, export a <code>listing()</code> and give every step a
+          <code>CodeCursor</code>.
+        </p>
+        <pre class="code"><code>{algoCode}</code></pre>
+
+        <h3><span class="step">2</span> The island</h3>
+        <p>
+          <code>src/components/viz/CountMinSketchViz.tsx</code> — default-export a React component.
+          Import <code>./viz.css</code> and reuse its classes so the widget matches every other one
+          on the site.
+        </p>
+        <pre class="code"><code>{islandCode}</code></pre>
+
+        <h3><span class="step">3</span> The page</h3>
+        <p>
+          <code>src/content/visualizations/count-min-sketch.mdx</code> — the file name is the URL.
+          Import the component with an explicit <code>.tsx</code> extension and a relative path, and
+          mount it with <code>client:visible</code>.
+        </p>
+        <pre class="code"><code>{mdxCode}</code></pre>
+
+        <p>
+          That is all. <code>/visualize/count-min-sketch/</code> now exists, a card appears under
+          "Probabilistic data structures" on <code>/visualize/</code>, and the sitemap picks it up.
+          Run <code>npm run check</code> to type-check the frontmatter against the schema.
+        </p>
+
+        <h3>Placing the code panel</h3>
+        <pre class="code"><code>{splitCode}</code></pre>
+        <p class="sm muted">
+          Below <code>64rem</code> the split collapses to one column, so the picture has to work
+          stacked above the code.
+        </p>
+      </section>
+
+      <section id="add-blog">
+        <h2><span class="num">10</span> Add a blog post</h2>
+        <p>
+          One file: <code>src/content/blog/my-post.mdx</code> (or <code>.md</code> if you don't need
+          components).
+        </p>
+        <pre class="code"><code>{blogCode}</code></pre>
+        <p>
+          It appears at <code>/blog/my-post/</code>, at the top of <code>/blog/</code> if its
+          <code>pubDate</code> is the newest, and in <code>/rss.xml</code>.
+          <code>draft: true</code> keeps it visible in <code>npm run dev</code> while hiding it from
+          the production build — the filter lives in <code>lib/content.ts</code>, so it applies to
+          the index, the route and the feed at once.
+        </p>
+        <p class="sm muted">
+          A post can mount an island exactly like a visualization page does; MDX is MDX. That is the
+          cheapest way to put one interactive figure inside an essay.
+        </p>
+      </section>
+
+      <section id="add-project">
+        <h2><span class="num">11</span> Add a project</h2>
+        <p>One file: <code>src/content/projects/my-app.mdx</code>.</p>
+        <pre class="code"><code>{projectCode}</code></pre>
+        <dl class="steps">
+          <div>
+            <dt><code>status</code></dt>
+            <dd>
+              <code>live</code> · <code>wip</code> · <code>archived</code>, mapped to the eyebrow
+              label by <code>STATUS_LABEL</code> in <code>lib/content.ts</code>.
+            </dd>
+          </div>
+          <div>
+            <dt><code>demo.embed</code></dt>
+            <dd>
+              <code>true</code> renders <code>DemoFrame</code> — a sandboxed, lazily-loaded iframe
+              with a fake browser chrome bar — above the prose. The deployed app
+              <strong>must allow framing</strong>: no <code>X-Frame-Options: DENY</code>, no
+              restrictive <code>frame-ancestors</code>. If it can't be framed, set
+              <code>embed: false</code>; the "Open live demo" button renders from
+              <code>demo.url</code> either way.
+            </dd>
+          </div>
+          <div>
+            <dt><code>featured</code></dt>
+            <dd>Sorts to the top of <code>/projects/</code>, ahead of the date ordering.</dd>
+          </div>
+        </dl>
+        <p class="sm muted">
+          For a demo that runs entirely in the browser, skip the iframe: write it as a component
+          under <code>src/components/</code> and mount it in the MDX body with
+          <code>client:visible</code>, the same as a visualization.
+        </p>
+      </section>
+
+      <section id="gotchas">
+        <h2><span class="num">12</span> Gotchas checklist</h2>
+        <ul class="checks">
+          <li>
+            Component imports in MDX need the <strong>explicit <code>.tsx</code> extension</strong>
+            and a relative path: <code>'../../components/viz/Foo.tsx'</code>.
+          </li>
+          <li>
+            Forget <code>client:visible</code> and the widget renders as dead static HTML — no
+            error, just nothing happens when you click it.
+          </li>
+          <li>Every island needs a <strong>default export</strong>.</li>
+          <li>
+            Anything random or time-based on first render breaks hydration. Seed it
+            (<code>rng()</code>) or freeze it (a fixed initial array), and randomize on click.
+          </li>
+          <li>Round floats that reach markup with <code>pct()</code> / <code>r1()</code>.</li>
+          <li>
+            <code>category</code> is required on visualizations, and a new string silently creates a
+            new heading on <code>/visualize/</code> — watch for a typo splitting one group in two.
+          </li>
+          <li>
+            Dates are <code>z.coerce.date()</code>: unquoted <code>2026-10-01</code> is fine, an
+            invalid date fails the build.
+          </li>
+          <li>Code-panel lines over <strong>46 columns</strong> get clipped.</li>
+          <li>
+            New colours belong in <code>global.css</code> as tokens, defined in <em>all three</em>
+            theme blocks.
+          </li>
+          <li>
+            Drafts are only hidden in production — verify with
+            <code>npm run build &amp;&amp; npm run preview</code>, not <code>npm run dev</code>.
+          </li>
+          <li>
+            Before deploying for real, set <code>site</code> in <code>astro.config.mjs</code> to your
+            domain: canonical URLs, RSS and the sitemap all derive from it.
+          </li>
+        </ul>
+      </section>
+
+      <section id="map">
+        <h2><span class="num">13</span> File map</h2>
+        <pre class="code tree"><code>{treeCode}</code></pre>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>npm run dev</code></td><td>Dev server on :4321, drafts visible</td></tr>
+              <tr><td><code>npm run build</code></td><td>Static build into <code>dist/</code></td></tr>
+              <tr>
+                <td><code>npm run preview</code></td>
+                <td>Serve the production build (drafts hidden)</td>
+              </tr>
+              <tr>
+                <td><code>npm run check</code></td>
+                <td>Type-check <code>.astro</code>, <code>.ts</code>, <code>.tsx</code> and frontmatter</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p class="foot muted">
+        This page lives at <code>src/pages/architecture.astro</code>. It is not linked from the nav
+        and is excluded from the sitemap and search engines, but it <em>is</em> part of the
+        production build — delete the file to remove it.
+      </p>
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .shell {
+    display: grid;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  @media (min-width: 68rem) {
+    .shell {
+      grid-template-columns: 15rem minmax(0, 1fr);
+      gap: 3rem;
+    }
+  }
+
+  /* ---------- table of contents ---------- */
+  .toc {
+    display: none;
+  }
+  @media (min-width: 68rem) {
+    .toc {
+      display: block;
+      position: sticky;
+      top: 2rem;
+      font-size: 0.875rem;
+      border-left: 1px solid var(--border);
+      padding-left: 1rem;
+    }
+  }
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin: 0 0 0.6rem;
+  }
+  .toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .toc a {
+    color: var(--text-2);
+    text-decoration: none;
+  }
+  .toc a:hover {
+    color: var(--accent-ink);
+  }
+
+  /* ---------- document ---------- */
+  .doc {
+    min-width: 0;
+  }
+  .doc-head h1 {
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    margin: 0.25rem 0 0.75rem;
+  }
+  .lede {
+    font-size: 1.1rem;
+    max-width: 46rem;
+    line-height: 1.65;
+  }
+  .lede .n {
+    font-family: var(--font-mono);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  section {
+    margin-top: 3.5rem;
+    scroll-margin-top: 2rem;
+  }
+  section h2 {
+    font-size: 1.5rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .num {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-3);
+  }
+  section h3 {
+    font-size: 1.05rem;
+    margin: 2rem 0 0.6rem;
+  }
+  .doc p {
+    max-width: 46rem;
+    line-height: 1.7;
+  }
+  .sm {
+    font-size: 0.875rem;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.08em 0.35em;
+    white-space: nowrap;
+  }
+
+  /* ---------- code blocks ---------- */
+  pre.code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+    line-height: 1.55;
+  }
+  pre.code code {
+    background: none;
+    border: 0;
+    padding: 0;
+    white-space: pre;
+    font-size: 0.8rem;
+    color: var(--text-2);
+  }
+  pre.tree code {
+    font-size: 0.76rem;
+  }
+
+  /* ---------- diagram ---------- */
+  .fig {
+    margin: 1.5rem 0 2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .fig svg {
+    display: block;
+    width: 100%;
+    min-width: 40rem;
+    height: auto;
+  }
+  .fig :global(.box rect) {
+    fill: var(--surface-2);
+    stroke: var(--border);
+    stroke-width: 1.5;
+  }
+  .fig :global(.box.strong rect) {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  .fig :global(.box.dash rect) {
+    fill: none;
+    stroke: var(--role-change);
+    stroke-dasharray: 5 4;
+  }
+  .fig :global(text) {
+    text-anchor: middle;
+    font-family: var(--font-mono);
+  }
+  .fig :global(.bt) {
+    font-size: 13px;
+    fill: var(--text);
+  }
+  .fig :global(.bs) {
+    font-size: 11px;
+    fill: var(--text-3);
+  }
+  .fig :global(.axis) {
+    font-size: 11px;
+    fill: var(--text-3);
+    font-family: var(--font-sans);
+    font-style: italic;
+  }
+  .fig :global(.edge) {
+    stroke: var(--text-3);
+    stroke-width: 1.5;
+    fill: none;
+  }
+  .fig :global(.arrow-head) {
+    fill: var(--text-3);
+  }
+
+  /* ---------- lists ---------- */
+  .big-list {
+    max-width: 46rem;
+    padding-left: 1.2rem;
+    display: grid;
+    gap: 0.8rem;
+    line-height: 1.7;
+  }
+  .checks {
+    max-width: 46rem;
+    padding-left: 1.2rem;
+    display: grid;
+    gap: 0.6rem;
+    line-height: 1.65;
+  }
+  .steps {
+    max-width: 46rem;
+    display: grid;
+    gap: 1.25rem;
+    margin: 1.25rem 0;
+  }
+  .steps dt {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+  }
+  .steps dt code {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--accent-ink);
+    font-size: 1em;
+  }
+  .steps dd {
+    margin: 0;
+    padding-left: 1rem;
+    border-left: 2px solid var(--border);
+    color: var(--text-2);
+    line-height: 1.7;
+  }
+
+  /* ---------- layer stack ---------- */
+  .layers {
+    list-style: none;
+    margin: 1.5rem 0;
+    padding: 0;
+    max-width: 46rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .layers li {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .layers li > div {
+    min-width: 0;
+  }
+  .layers li p {
+    margin: 0.3rem 0 0;
+    font-size: 0.875rem;
+    color: var(--text-2);
+  }
+  .layers code {
+    white-space: normal;
+    word-break: break-word;
+  }
+  .tag.lay {
+    flex: none;
+    width: 4.5rem;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .rule {
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 0 0.5rem 1rem;
+    margin: 1.5rem 0;
+    color: var(--text-2);
+  }
+
+  .pattern {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    max-width: 46rem;
+  }
+  .pattern h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+  }
+  .pattern p {
+    margin: 0.35rem 0;
+  }
+
+  .chips {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    max-width: 46rem;
+  }
+  .chips li {
+    font-size: 0.8rem;
+    color: var(--text-3);
+  }
+  .chips code {
+    margin-right: 0.3rem;
+  }
+
+  .recipe-note {
+    color: var(--text-2);
+    font-style: italic;
+  }
+  .step {
+    display: inline-grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 1.25rem 0 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.875rem;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--surface-2);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .foot {
+    margin-top: 4rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.875rem;
+  }
+</style>
