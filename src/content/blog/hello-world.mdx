@@ -1,0 +1,23 @@
+---
+title: Hello, world
+description: Why I built this site, and what you'll find here.
+pubDate: 2026-09-20
+tags: [meta]
+---
+
+I'm a software engineer working on .NET backends, search and RAG systems ([more about me](/about/)).
+My day job keeps me close to things like vector indexes, ranking and LLM agents, and I learn them best
+by building them from scratch and watching them run.
+
+So this site is my workshop: [projects](/projects/) like [Jarvis](/projects/jarvis/), [interactive
+visualizations](/visualize/) of the algorithms and ML models I've learned, and posts like this one.
+
+Posts are MDX, so they can include regular Markdown, code:
+
+```ts
+const hll = new HyperLogLog(14);
+for (const id of visitorIds) hll.add(id);
+console.log(`~${Math.round(hll.estimate())} unique visitors`);
+```
+
+…and interactive components, just like the visualization pages.

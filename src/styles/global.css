@@ -287,6 +287,19 @@ img {
   padding: 0.4rem 0.75rem;
   text-align: left;
 }
+/* Frame for the small HTML diagrams in src/components/blog. */
+.prose figure.diagram {
+  margin: 2rem 0;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.prose figure.diagram figcaption {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-3);
+}
 
 /* ---------- Shared controls (used by visualizations too) ---------- */
 .btn {

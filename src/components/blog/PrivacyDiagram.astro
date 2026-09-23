@@ -1,0 +1,104 @@
+---
+// What crosses the boundary between your device and the rest of the system. Used in "The Answer Was Already in the Weights".
+---
+
+<figure class="diagram">
+  <div class="zones">
+    <div class="zone mine">
+      <p class="label">Your device</p>
+      <div class="box">Your state<small>messages, finances, history</small></div>
+      <span class="link" aria-hidden="true">↕</span>
+      <div class="box gate">Your Translator<small>the sovereign gatekeeper</small></div>
+    </div>
+    <div class="wire">
+      <p><span>typed question + throwaway token</span> <span class="arrow" aria-hidden="true">→</span></p>
+      <p><span class="arrow" aria-hidden="true">←</span> <span>typed answer</span></p>
+    </div>
+    <div class="zone public">
+      <p class="label">Everything else</p>
+      <div class="box">Does the work<small>never learns who or why, keeps no memory</small></div>
+    </div>
+  </div>
+  <figcaption>
+    Only the question crosses the boundary. Your identity, your reasons and your history stay on your side.
+  </figcaption>
+</figure>
+
+<style>
+  .zones {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+  }
+  .zone {
+    padding: 0.75rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .mine {
+    border: 1px solid var(--accent);
+  }
+  .public {
+    border: 1px dashed var(--text-3);
+  }
+  .label {
+    margin: 0 0 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .box {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    font-size: 0.9rem;
+  }
+  .box small {
+    display: block;
+    color: var(--text-3);
+    font-size: 0.78rem;
+  }
+  .gate {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .gate small {
+    font-weight: 400;
+  }
+  .link {
+    display: block;
+    margin: 0.25rem 0;
+    color: var(--text-3);
+  }
+  .wire {
+    font-size: 0.8rem;
+    color: var(--text-2);
+    text-align: center;
+    max-width: 11rem;
+  }
+  .wire p {
+    margin: 0.5rem 0;
+  }
+  .arrow {
+    display: inline-block;
+    color: var(--text-3);
+    font-size: 1rem;
+  }
+  @media (max-width: 560px) {
+    .zones {
+      grid-template-columns: 1fr;
+    }
+    .wire {
+      max-width: none;
+    }
+    .arrow {
+      transform: rotate(90deg);
+    }
+  }
+</style>

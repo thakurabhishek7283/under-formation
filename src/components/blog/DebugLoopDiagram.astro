@@ -1,0 +1,86 @@
+---
+// Debugging by conversation: swarm anomaly → translator explanation → human correction. Used in "The Answer Was Already in the Weights".
+---
+
+<figure class="diagram">
+  <div class="steps">
+    <div class="step">
+      <p class="who">Swarm</p>
+      <p class="raw">vector block #9821 · anomaly</p>
+      <p class="note">A decision, in a language nobody reads</p>
+    </div>
+    <span class="arrow" aria-hidden="true">→</span>
+    <div class="step translator">
+      <p class="who">Translator</p>
+      <p>“I bypassed Protocol X because node Y showed a 94% latency risk.”</p>
+    </div>
+    <span class="arrow" aria-hidden="true">→</span>
+    <div class="step">
+      <p class="who">You</p>
+      <p>“Too cautious. Under these conditions, prioritize Protocol X.”</p>
+    </div>
+  </div>
+  <p class="return">↺ The swarm adjusts its behavior. No code, no compile, no deploy.</p>
+  <figcaption>
+    You don't debug lines of code. You debug the reasoning, in words, at the level of concepts you
+    and the machine both understand.
+  </figcaption>
+</figure>
+
+<style>
+  .steps {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .step {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    font-size: 0.9rem;
+  }
+  .step p {
+    margin: 0;
+  }
+  .translator {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .who {
+    margin-bottom: 0.4rem !important;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .raw {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  .note {
+    margin-top: 0.4rem !important;
+    color: var(--text-3);
+    font-size: 0.8rem;
+  }
+  .arrow {
+    align-self: center;
+    color: var(--text-3);
+  }
+  .return {
+    margin: 0.75rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text-2);
+    text-align: center;
+  }
+  @media (max-width: 560px) {
+    .steps {
+      flex-direction: column;
+    }
+    .arrow {
+      transform: rotate(90deg);
+    }
+  }
+</style>

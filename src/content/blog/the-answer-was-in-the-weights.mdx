@@ -1,0 +1,314 @@
+---
+title: The Answer Was Already in the Weights
+description: TypeSafe's Jev is a model that never writes a sentence. It's the clearest argument I've seen that most of what an LLM outputs is translation, not thought, and a hint at what computing looks like when we stop paying for it.
+pubDate: 2026-09-27
+tags: [ai, llms, agents, essay]
+draft: true
+---
+
+import ReadoutDiagram from '../../components/blog/ReadoutDiagram.astro';
+import StackDiagram from '../../components/blog/StackDiagram.astro';
+import DebugLoopDiagram from '../../components/blog/DebugLoopDiagram.astro';
+import PrivacyDiagram from '../../components/blog/PrivacyDiagram.astro';
+
+Every backend that talks to an LLM ends up with a prompt like this somewhere in it:
+
+```text
+Here is a support ticket:
+"Export crashes in Safari. Works in Chrome."
+
+Is this a bug_report or a feature_request?
+Respond with ONLY the label. No explanation.
+```
+
+And sooner or later, it gets back something like this:
+
+```text
+Sure! Based on the ticket, this appears to be a **bug_report**, since the user
+describes an existing feature that fails in one specific browser.
+```
+
+So you add a regex. Then JSON mode. Then a retry for when the JSON doesn't parse, and a fallback for
+when the retry doesn't either. Each call streams out a few dozen tokens, you pay for every one of
+them, and what you actually wanted was a single choice between two labels.
+
+I used to treat this as a prompt-engineering problem. I now think it's a symptom of something more
+basic about what these models are, and a model released on 15 September 2026, **Jev** by TypeSafe AI,
+is what made it click for me.
+
+## What a model actually hands you
+
+Strip away the chat window and a language model is a very large, frozen arrangement of numbers. The
+weights are learned once, during training, and nothing you type changes them. Running the model is
+one fixed computation, a *forward pass*, that takes your text in and produces exactly one thing: a
+probability distribution over what the next token should be.
+
+Not a sentence. A distribution.
+
+Everything we think of as "the model talking" is a loop wrapped around that pass: pick a token from
+the distribution, append it to the input, run the pass again. A 40-token answer is 40 forward passes,
+one after another. Caching makes each pass cheaper than the first, but it can't make them parallel;
+token 20 can't be computed until token 19 exists.
+
+Here's the part that changed how I think about it. In the ticket example, the decision is already
+sitting in the *first* distribution. Look at how much probability the model puts on `bug` versus
+`feature` at the very first position, before a single word of the answer has been written, and the
+preference is already there. You can check this with any open model in a dozen lines:
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+name = "Qwen/Qwen2.5-0.5B-Instruct"
+tok = AutoTokenizer.from_pretrained(name)
+model = AutoModelForCausalLM.from_pretrained(name)
+
+ticket = "Export crashes in Safari. Works in Chrome."
+messages = [{"role": "user", "content": f"Ticket: {ticket}\nIs this a bug or a feature request?"}]
+prompt = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+ids = tok(prompt, return_tensors="pt").input_ids
+
+with torch.no_grad():
+    logits = model(ids).logits[0, -1]  # one forward pass, the next-token scores
+
+options = ["bug", "feature"]
+first_token = [tok.encode(o, add_special_tokens=False)[0] for o in options]
+probs = torch.softmax(logits[first_token], dim=0)  # renormalise over just our options
+print(dict(zip(options, probs.tolist())))
+```
+
+It's a toy (options that share a first token need more care), and it isn't new. Reading class
+probabilities straight off the logits is an old trick. That's rather the point: the answer was always
+there, one pass in.
+
+Everything the model writes after that point, the "Sure!", the bold, the justification, isn't the
+model deciding. It's the model *explaining its decision to you*, in the only format we asked for:
+English prose. For a question like this, autoregressive text generation is a translation layer, and
+an expensive one.
+
+<ReadoutDiagram />
+
+One caveat, because it matters later. Not every token is packaging. On genuinely hard problems
+(multi-step maths, planning, non-trivial code) the tokens a model writes are part of the computation,
+and letting it think out loud measurably improves the answer. That's slow, deliberate, *System 2*
+work, in Daniel Kahneman's terms. But a large share of what we actually use LLMs for in production
+is classification, routing, scoring, extraction and yes/no checks. That's *System 1*: fast,
+intuitive judgement. There, the thinking happens in one pass, and the rest is a performance for an
+audience that isn't reading. The audience is your parser.
+
+## Jev: a model that doesn't talk
+
+Jev is the first product I've seen built entirely around that observation.
+
+It doesn't generate text at all. You give it **state** (a string, a JSON object or an array of text)
+and a set of **typed questions**. Each question is one of three primitives:
+
+| Primitive | You define                                  | You get back                                        |
+| --------- | ------------------------------------------- | --------------------------------------------------- |
+| Choice    | a fixed set of options                      | the chosen option, a probability for each, confidence |
+| Score     | an ordered scale of described levels        | a probability-weighted score, per-level probabilities, confidence |
+| Noul      | a yes/no statement                          | the probability that it's true                      |
+
+Here's the same ticket, lightly adapted from [TypeSafe's docs](https://docs.typesafe.ai/introduction):
+
+```ts
+const { answers } = await client.systemOne({
+  state: { ticket: 'Export crashes in Safari. Works in Chrome.' },
+  questions: {
+    category: choice('What kind of ticket?', {
+      bug_report: 'Something is broken',
+      feature_request: 'Asks for a new feature',
+    }),
+    severity: score('How severe?', [
+      'Cosmetic impact',
+      'Broken but a workaround exists',
+      'Blocking issue',
+    ]),
+  },
+});
+```
+
+```json
+{
+  "category": {
+    "choice": "bug_report",
+    "probabilities": { "bug_report": 0.97, "feature_request": 0.03 },
+    "confidence": 0.95
+  },
+  "severity": {
+    "score": 1.43,
+    "probabilities": { "0": 0.0, "1": 0.57, "2": 0.43 },
+    "confidence": 0.35
+  }
+}
+```
+
+Look at what isn't there. There's no prose to parse. `category` can't come back as `"Bug Report"`,
+`"bug-report"` or a paragraph, because every possible output was fixed before the model ran. And the
+severity answer is honest about itself: 57% "workaround exists", 43% "blocking", so a score of 1.43
+(0 × 0.00 + 1 × 0.57 + 2 × 0.43) with a confidence of just 0.35. That's the model saying *I'm not
+sure* in a form an `if` statement can read.
+
+The numbers TypeSafe publishes are striking:
+
+- **Latency:** 70–500 ms end to end, against 3–329 seconds for the LLM workflows they compared with.
+- **Price:** $0.042 per million input tokens. Output tokens are free.
+- **Headline:** up to 193.6× faster and 444.6× cheaper on their internal workflows.
+- **Fan-out:** all the questions in one request are evaluated in parallel, against the same state,
+  and adding more barely changes the response time.
+- **The demo:** Jev playing *Doom*, making about ten decisions a second for roughly $7 an hour.
+
+Treat those as claims. The benchmark workflows were built by TypeSafe's own team, they say
+themselves that their gains probably sit at the high end of what you'll see in practice, and the
+architecture and weights aren't published. But even at a tenth of those figures, it's a different
+category of tool.
+
+The name is a clue to the bet. William Stanley Jevons was the economist who noticed that making coal
+engines more efficient made Britain burn *more* coal, not less. Make a judgement call cost 100 ms and
+a fraction of a cent, and people will start putting judgement calls in places they'd never have put an
+LLM: inside game loops, inside robots, inside every `if`.
+
+## The model already knows
+
+This is the idea I actually sat down to write about.
+
+TypeSafe hasn't said how Jev works inside, so I can't tell you what's under the hood. But its
+interface makes a claim about what a model *is*, and I think the claim is right.
+
+A trained model is knowledge, compressed into weights and arranged so that it can be queried. By the
+time your request arrives, the answer to it (and to an enormous space of questions you might have
+asked instead) is already latent in how those numbers are arranged. For System 1 questions, asking
+isn't making the model think from scratch. It's indexing into something that already exists. The
+model, in a real sense, already knows what you're going to ask. It just needs a translator.
+
+If that's true, the interesting engineering problem isn't only making models know more. It's the
+**readout**: how do you get what's in the weights out, in a form that's useful to whoever is on the
+other end?
+
+For a person, the right readout is language. We need the sentences; that's how we understand things.
+For software, language is the wrong readout. Software wants a typed value and a probability. Chat-style
+LLMs force every consumer through the human-shaped readout, then make the software undo the
+translation with a parser. Jev skips the round trip. It's a translator from weights straight into
+types.
+
+And the speed follows from that. Jev isn't two orders of magnitude faster because it knows less or
+thinks faster. It's faster because it isn't writing an essay nobody will read. Most of the latency in
+an LLM answer is the latency of translation.
+
+## We've been here before
+
+Once I started seeing language as a translation layer, I saw the same pattern all over computing,
+because in a sense it's what computing *is*.
+
+Almost every layer between you and the hardware exists to meet humans halfway. We couldn't think in
+binary, so we invented programming languages. We couldn't hold storage in our heads, so we invented
+files and folders. We couldn't remember where things lived on a network, so we built browsers, links
+and search boxes. Each layer is a brilliant piece of engineering, and each one is a translation for
+our benefit.
+
+Now look at how we're deploying the most capable models ever built: as computer-use agents. The agent
+takes a screenshot, studies a grid of pixels, finds a small grey rectangle labelled *Submit*, moves a
+cursor there and clicks. Then it takes another screenshot to check the click worked. A model, reading
+an interface drawn for human eyes, to press a button that calls an API another program could have
+called directly. It's the whole translation stack, run in both directions, with a machine at each
+end.
+
+That's what I've been calling the **post-UI paradox**: the more capable our machines become, the more
+effort we spend teaching them to pretend to be us.
+
+<StackDiagram />
+
+Jev is a small, concrete step the other way. It pulls one link out of the chain: software asks,
+weights answer, and no English happens in between. Follow that logic far enough and human-readable
+translation only needs to happen in one place: at the edge, where a person actually is.
+
+## Following the thread
+
+From here on this is speculation, and I want to be clear about where that line is.
+
+Picture the rest of the stack folding the same way. An **edge translator** lives on your own device,
+and it's the only part you ever talk to. Its job is to turn what you mean into precise,
+machine-native questions, and to turn the answers back into something you can read. Behind it,
+models and services talk to each other in whatever form is cheapest: typed values like Jev's today,
+and quite plausibly raw vectors, the representations models already use internally, tomorrow.
+
+Give that system a real request:
+
+> *"Set up a relief fund for local clinics, allocate the first round of money, and make sure we're
+> compliant."*
+
+Today that's a banking portal, a spreadsheet, a legal database and a week of email. In the folded
+stack, no app gets opened, because the app was only ever a human-readable wrapper. One component
+moves the money. Another checks each allocation against the regulations, which is a few thousand
+yes/no questions at a fraction of a cent each. A third writes the one thing that genuinely needs to
+be prose: the summary you read and approve.
+
+Two problems don't fold away. They get harder.
+
+### Trust: you can't set a breakpoint in a vector
+
+If the components coordinate in a language nobody reads, how do you debug them? I don't think the
+answer is to drag everything back into human-readable code. I think it's the translator's second
+job: turning the system's behaviour back into the concepts people actually reason with, like
+priorities, risks, trade-offs and causes.
+
+<DebugLoopDiagram />
+
+You don't patch a bug; you correct an assumption. That's only safe if the machine's reports are
+faithful and its confidence means something, which is why I think the most important field in Jev's
+API isn't the answer at all. It's `confidence`. TypeSafe trains for calibration (they call it
+*Reinforcement Learning for Calibrated Decisions*), so that answers given 90% probability should be
+right about 90% of the time. Their argument is that a model that's right 95% of the time, but can't
+tell you *when* it's in the other 5%, can't be trusted to automate anything.
+
+A calibrated confidence score is a primitive version of the machine telling you when to look:
+
+```ts
+const { category } = answers;
+
+if (category.confidence < 0.5) routeToHuman(ticket);
+else if (category.confidence < 0.9) askToConfirm(ticket, category.choice);
+else act(ticket, category.choice);
+```
+
+It's tiny compared with a real explanation, but it's the right shape: something that brings a human
+in exactly when a human is needed. What it doesn't solve is faithfulness. A calibrated number tells
+you *how often* the model is wrong, not *why*. For the conversation in the diagram above to work,
+the translator's explanations have to reflect what the system actually did, not a plausible story
+told after the fact. I suspect that's the hardest problem on this whole road.
+
+### Privacy: the translator knows everything
+
+Jev's request shape hints at the answer here too: state goes in, typed answers come out. In the
+folded stack, your translator keeps your state (finances, history, messages) on hardware you own,
+and sends the outside world only the stripped-down question. Not "should *I*, with *this* account
+history, move this money", but an anonymous, abstract job attached to a throwaway token. The rest of
+the system never learns who asked or why.
+
+<PrivacyDiagram />
+
+That doesn't remove security. It moves it. File paths and open ports stop mattering, and your
+translator becomes the most valuable thing you own, and so the thing most worth attacking. Whoever
+can fool it can speak in your voice.
+
+## Back to the ticket
+
+Go back to the prompt at the top. Before the model wrote "Sure!", before the bold text and the
+helpful justification, the decision had already been made in a single forward pass. Everything after
+that was the model translating for a reader who turned out to be a regex.
+
+Jev won't replace LLMs, and it isn't trying to. Hard problems still need a model that thinks out
+loud, and people still need sentences. But it draws a line I think is going to matter: between the
+knowledge in the weights and the language we wrap it in. For most of the history of computing, every
+new layer was built to meet humans halfway. The next ones might be built on the opposite assumption:
+the machine already knows, so ask precisely, read the answer out cheaply, and translate only at the
+last step, for the one reader who needs it.
+
+Code, protocols, interfaces and prose were always the price of talking to machines. We're only now
+finding out how much of that price we can stop paying.
+
+---
+
+**Sources:** [Introducing System One Models & Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev)
+(TypeSafe AI blog) · [TypeSafe docs](https://docs.typesafe.ai/introduction) ·
+[Jev (AI model)](https://en.wikipedia.org/wiki/Jev_(AI_model)) on Wikipedia.

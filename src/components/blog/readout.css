@@ -1,0 +1,159 @@
+/* Styles for ReadoutExplorer (builds on ../viz/viz.css). */
+
+.ro-model {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.ro-model.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.ro-note {
+  margin: -0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+.ro-tickets {
+  display: grid;
+  gap: 0.2rem;
+  max-height: 13rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.ro-ticket {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.ro-ticket:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.ro-ticket.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.ro-dot {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+}
+.ro-tag {
+  margin-left: auto;
+  flex: none;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+.ro-selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.ro-truth {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+.ro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1rem;
+}
+.ro-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.ro-panel .viz-label {
+  margin: 0;
+}
+.ro-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+.ro-gen {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--role-change);
+  background: color-mix(in srgb, var(--role-change) 8%, var(--surface));
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+.ro-bars {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ro-bars li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 2.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.ro-bars code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+.ro-track {
+  height: 0.65rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.ro-fill {
+  display: block;
+  height: 100%;
+}
+.ro-p {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.ro-verdict {
+  margin-top: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.ro-verdict.ok {
+  color: var(--good);
+}
+.ro-verdict.bad {
+  color: var(--critical);
+}

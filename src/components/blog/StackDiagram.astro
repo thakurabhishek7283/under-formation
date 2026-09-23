@@ -1,0 +1,99 @@
+---
+// Today's stack (with an AI agent on top) next to the folded stack. Used in "The Answer Was Already in the Weights".
+---
+
+<figure class="diagram">
+  <div class="cols">
+    <div>
+      <p class="label">Today, with an AI agent</p>
+      <ol class="stack">
+        <li class="you">You</li>
+        <li class="agent">AI agent, clicking for you</li>
+        <li>Application</li>
+        <li>Browser &amp; GUI</li>
+        <li>Operating system</li>
+        <li>Programming language</li>
+        <li>Machine code</li>
+        <li class="hw">Hardware</li>
+      </ol>
+    </div>
+    <div>
+      <p class="label">Folded: translate only at the edge</p>
+      <ol class="stack">
+        <li class="you">You</li>
+        <li class="new">Edge Translator</li>
+        <li class="new">Models, talking in types &amp; vectors</li>
+        <li class="hw">Hardware</li>
+      </ol>
+    </div>
+  </div>
+  <figcaption>
+    Every middle layer on the left exists to meet humans halfway. Today's agents add one more layer on
+    top. Take away the need for human-readable steps and most of those layers have nothing left to do.
+  </figcaption>
+</figure>
+
+<style>
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .label {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .stack {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .stack li {
+    position: relative;
+    margin: 0;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  .stack li + li {
+    margin-top: 0.8rem;
+  }
+  .stack li + li::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: calc(-0.8rem - 1px);
+    height: 0.8rem;
+    border-left: 1px solid var(--text-3);
+  }
+  .you {
+    font-weight: 600;
+  }
+  .agent {
+    border-color: var(--role-change) !important;
+    background: color-mix(in srgb, var(--role-change) 12%, var(--surface)) !important;
+  }
+  .new {
+    border-color: var(--accent) !important;
+    background: var(--accent-soft) !important;
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .hw {
+    border-style: dashed !important;
+    background: transparent !important;
+    color: var(--text-3) !important;
+  }
+  @media (max-width: 520px) {
+    .cols {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
