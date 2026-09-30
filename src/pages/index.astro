@@ -4,6 +4,7 @@ import Card from '../components/Card.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import { AUTHOR, SHOW_BLOG, SOCIALS } from '../consts';
 import { getPosts, getProjects, getVisualizations, STATUS_LABEL } from '../lib/content';
+import { url } from '../lib/url';
 
 const projects = (await getProjects()).slice(0, 4);
 const viz = (await getVisualizations()).slice(0, 3);
@@ -19,12 +20,12 @@ const posts = (await getPosts()).slice(0, 5);
       <p class="muted intro">
         I'm a {AUTHOR.role}, building .NET services for search, RAG and LLM agent integrations. Before that I spent
         two and a half years at I2V Systems on a video analytics platform running across up to 10,000
-        cameras. <a href="/about/">More about me →</a>
+        cameras. <a href={url('/about/')}>More about me →</a>
       </p>
       <p class="muted intro">
-        This is where I keep <a href="/projects/">things I've built</a>, <a href="/visualize/">interactive
+        This is where I keep <a href={url('/projects/')}>things I've built</a>, <a href={url('/visualize/')}>interactive
         visualizations</a> of algorithms, data structures and ML models I've
-        learned{SHOW_BLOG ? <>, and <a href="/blog/">notes</a> along the way</> : null}.
+        learned{SHOW_BLOG ? <>, and <a href={url('/blog/')}>notes</a> along the way</> : null}.
       </p>
       <div class="links">
         {SOCIALS.map((s) => <a class="btn" href={s.href} rel="me noopener" target="_blank">{s.label}</a>)}
@@ -36,12 +37,12 @@ const posts = (await getPosts()).slice(0, 5);
         <section>
           <div class="section-head">
             <h2>Projects</h2>
-            <a href="/projects/">All projects →</a>
+            <a href={url('/projects/')}>All projects →</a>
           </div>
           <div class="grid">
             {projects.map((p) => (
               <Card
-                href={`/projects/${p.id}/`}
+                href={url(`/projects/${p.id}/`)}
                 title={p.data.title}
                 description={p.data.description}
                 meta={p.data.date.getFullYear().toString()}
@@ -59,11 +60,11 @@ const posts = (await getPosts()).slice(0, 5);
         <section>
           <div class="section-head">
             <h2>Visualize</h2>
-            <a href="/visualize/">All visualizations →</a>
+            <a href={url('/visualize/')}>All visualizations →</a>
           </div>
           <div class="grid">
             {viz.map((v) => (
-              <Card href={`/visualize/${v.id}/`} title={v.data.title} description={v.data.description} meta={v.data.category} />
+              <Card href={url(`/visualize/${v.id}/`)} title={v.data.title} description={v.data.description} meta={v.data.category} />
             ))}
           </div>
         </section>
@@ -75,12 +76,12 @@ const posts = (await getPosts()).slice(0, 5);
         <section>
           <div class="section-head">
             <h2>Writing</h2>
-            <a href="/blog/">All posts →</a>
+            <a href={url('/blog/')}>All posts →</a>
           </div>
           <ul class="posts">
             {posts.map((post) => (
               <li>
-                <a href={`/blog/${post.id}/`}>{post.data.title}</a>
+                <a href={url(`/blog/${post.id}/`)}>{post.data.title}</a>
                 <span class="muted">
                   <FormattedDate date={post.data.pubDate} />
                 </span>

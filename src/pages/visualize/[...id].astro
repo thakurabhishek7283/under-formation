@@ -2,6 +2,7 @@
 import { render } from 'astro:content';
 import ArticleLayout from '../../layouts/ArticleLayout.astro';
 import { getVisualizations } from '../../lib/content';
+import { url } from '../../lib/url';
 
 export async function getStaticPaths() {
   const viz = await getVisualizations();
@@ -18,7 +19,7 @@ const { Content } = await render(entry);
   date={entry.data.pubDate}
   eyebrow={entry.data.category}
   tags={entry.data.tags}
-  back={{ href: '/visualize/', label: 'All visualizations' }}
+  back={{ href: url('/visualize/'), label: 'All visualizations' }}
 >
   <Content />
 </ArticleLayout>

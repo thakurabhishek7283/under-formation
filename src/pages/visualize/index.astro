@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Card from '../../components/Card.astro';
 import { getVisualizations } from '../../lib/content';
+import { url } from '../../lib/url';
 
 const all = await getVisualizations();
 const byCategory = Map.groupBy(all, (v) => v.data.category);
@@ -25,7 +26,7 @@ const byCategory = Map.groupBy(all, (v) => v.data.category);
           <h2>{category}</h2>
           <div class="grid">
             {items.map((v) => (
-              <Card href={`/visualize/${v.id}/`} title={v.data.title} description={v.data.description} tags={v.data.tags} />
+              <Card href={url(`/visualize/${v.id}/`)} title={v.data.title} description={v.data.description} tags={v.data.tags} />
             ))}
           </div>
         </section>

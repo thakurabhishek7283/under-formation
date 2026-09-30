@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Card from '../../components/Card.astro';
 import { getProjects, STATUS_LABEL } from '../../lib/content';
+import { url } from '../../lib/url';
 
 const projects = await getProjects();
 ---
@@ -15,7 +16,7 @@ const projects = await getProjects();
       {
         projects.map((p) => (
           <Card
-            href={`/projects/${p.id}/`}
+            href={url(`/projects/${p.id}/`)}
             title={p.data.title}
             description={p.data.description}
             meta={p.data.date.getFullYear().toString()}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CLASS_DATASETS, accuracy, argmax, computeField, makeClassData, trainTest, type ClassDataset, type Field } from '../../../lib/ml/classify';
+import { url } from '../../../lib/url';
 import { ZOO } from '../../../lib/ml/zoo';
 import { ClassLegend, DecisionMap } from './DecisionMap';
 import '../viz.css';
@@ -78,7 +79,7 @@ export default function ClassifierZooViz({ n = 160 }: { n?: number }) {
             {ZOO.map((z) => (
               <tr key={z.id}>
                 <th scope="row">
-                  <a href={z.href}>{z.name}</a>
+                  <a href={url(z.href)}>{z.name}</a>
                   <small>{z.settings}</small>
                 </th>
                 {DATASETS.map((d, j) => {

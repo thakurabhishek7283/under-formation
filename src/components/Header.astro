@@ -1,17 +1,18 @@
 ---
 import { SITE_TITLE, NAV_LINKS } from '../consts';
+import { url } from '../lib/url';
 
 const path = Astro.url.pathname;
-const isActive = (href: string) => path.startsWith(href);
+const isActive = (href: string) => path.startsWith(url(href));
 ---
 
 <header>
   <div class="container bar">
-    <a class="brand" href="/">{SITE_TITLE}</a>
+    <a class="brand" href={url('/')}>{SITE_TITLE}</a>
     <nav aria-label="Main">
       {
         NAV_LINKS.map((l) => (
-          <a href={l.href} aria-current={isActive(l.href) ? 'page' : undefined}>
+          <a href={url(l.href)} aria-current={isActive(l.href) ? 'page' : undefined}>
             {l.label}
           </a>
         ))

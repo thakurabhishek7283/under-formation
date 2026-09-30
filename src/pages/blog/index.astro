@@ -3,8 +3,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import { SHOW_BLOG } from '../../consts';
 import { getPosts } from '../../lib/content';
+import { url } from '../../lib/url';
 
-if (!SHOW_BLOG) return Astro.redirect('/');
+if (!SHOW_BLOG) return Astro.redirect(url('/'));
 
 const posts = await getPosts();
 ---
@@ -17,7 +18,7 @@ const posts = await getPosts();
       {
         posts.map((post) => (
           <li>
-            <a href={`/blog/${post.id}/`}>
+            <a href={url(`/blog/${post.id}/`)}>
               <span class="title">{post.data.title}</span>
               <span class="muted desc">{post.data.description}</span>
             </a>

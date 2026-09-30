@@ -3,6 +3,7 @@ import { render } from 'astro:content';
 import ArticleLayout from '../../layouts/ArticleLayout.astro';
 import DemoFrame from '../../components/DemoFrame.astro';
 import { getProjects, STATUS_LABEL } from '../../lib/content';
+import { url } from '../../lib/url';
 
 export async function getStaticPaths() {
   const projects = await getProjects();
@@ -20,7 +21,7 @@ const { title, description, date, tech, repo, demo, status } = project.data;
   date={date}
   eyebrow={demo || status !== 'live' ? STATUS_LABEL[status] : 'Project'}
   tags={tech}
-  back={{ href: '/projects/', label: 'All projects' }}
+  back={{ href: url('/projects/'), label: 'All projects' }}
 >
   <div slot="header-extra" class="actions">
     {demo && <a class="btn primary" href={demo.url} target="_blank" rel="noopener">Open live demo ↗</a>}

@@ -1,5 +1,6 @@
 ---
 import { AUTHOR, SOCIALS } from '../consts';
+import { url } from '../lib/url';
 const year = new Date().getFullYear();
 ---
 
@@ -9,7 +10,7 @@ const year = new Date().getFullYear();
     <nav aria-label="Social">
       {SOCIALS.map((s) => <a href={s.href} rel="me noopener" target="_blank">{s.label}</a>)}
       <a href={`mailto:${AUTHOR.email}`}>Email</a>
-      <a href="/rss.xml">RSS</a>
+      <a href={url('/rss.xml')}>RSS</a>
     </nav>
   </div>
 </footer>

@@ -2,6 +2,7 @@
 import { render } from 'astro:content';
 import ArticleLayout from '../../layouts/ArticleLayout.astro';
 import { getPosts } from '../../lib/content';
+import { url } from '../../lib/url';
 
 export async function getStaticPaths() {
   const posts = await getPosts();
@@ -18,7 +19,7 @@ const { Content } = await render(post);
   date={post.data.pubDate}
   updatedDate={post.data.updatedDate}
   tags={post.data.tags}
-  back={{ href: '/blog/', label: 'All posts' }}
+  back={{ href: url('/blog/'), label: 'All posts' }}
 >
   <Content />
 </ArticleLayout>
