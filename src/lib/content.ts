@@ -1,9 +1,11 @@
 import { getCollection } from 'astro:content';
+import { SHOW_BLOG } from '../consts';
 
 // Drafts are visible in `npm run dev` but excluded from production builds.
 const visible = ({ data }: { data: { draft: boolean } }) => import.meta.env.DEV || !data.draft;
 
 export async function getPosts() {
+  if (!SHOW_BLOG) return [];
   const posts = await getCollection('blog', visible);
   return posts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 }

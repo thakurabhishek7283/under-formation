@@ -17,9 +17,13 @@ export const SOCIALS: { label: string; href: string }[] = [
   { label: 'LeetCode', href: 'https://leetcode.com/u/abhishekthakur7283/' },
 ];
 
+// The blog is hidden until there are posts worth publishing. Flip to true to bring back the nav
+// link, the home page section, the post pages and the posts in the RSS feed.
+export const SHOW_BLOG = false;
+
 export const NAV_LINKS = [
   { label: 'About', href: '/about/' },
   { label: 'Projects', href: '/projects/' },
   { label: 'Visualize', href: '/visualize/' },
-  { label: 'Blog', href: '/blog/' },
+  ...(SHOW_BLOG ? [{ label: 'Blog', href: '/blog/' }] : []),
 ];

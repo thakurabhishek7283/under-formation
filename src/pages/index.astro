@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Card from '../components/Card.astro';
 import FormattedDate from '../components/FormattedDate.astro';
-import { AUTHOR, SOCIALS } from '../consts';
+import { AUTHOR, SHOW_BLOG, SOCIALS } from '../consts';
 import { getPosts, getProjects, getVisualizations, STATUS_LABEL } from '../lib/content';
 
 const projects = (await getProjects()).slice(0, 4);
@@ -24,7 +24,7 @@ const posts = (await getPosts()).slice(0, 5);
       <p class="muted intro">
         This is where I keep <a href="/projects/">things I've built</a>, <a href="/visualize/">interactive
         visualizations</a> of algorithms, data structures and ML models I've
-        learned, and <a href="/blog/">notes</a> along the way.
+        learned{SHOW_BLOG ? <>, and <a href="/blog/">notes</a> along the way</> : null}.
       </p>
       <div class="links">
         {SOCIALS.map((s) => <a class="btn" href={s.href} rel="me noopener" target="_blank">{s.label}</a>)}

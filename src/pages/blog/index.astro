@@ -1,7 +1,10 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
+import { SHOW_BLOG } from '../../consts';
 import { getPosts } from '../../lib/content';
+
+if (!SHOW_BLOG) return Astro.redirect('/');
 
 const posts = await getPosts();
 ---
