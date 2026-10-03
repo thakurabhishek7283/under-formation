@@ -1,0 +1,55 @@
+---
+title: Tessera
+description: Collaborative features as configurable Web Components. Chat, WebRTC video, comments, kanban, notes, a rich-text editor, image annotation and maps, running across browser tabs with no backend or against a self-hostable server.
+date: 2026-04-20
+tech: [TypeScript, Web Components, React, WebRTC, WebSocket, zod, Fastify, SQLite, Playwright]
+status: live
+featured: true
+repo: https://github.com/thakurabhishek7283/tessera
+demo:
+  url: https://thakurabhishek7283.github.io/tessera-workspace/
+  embed: true
+  height: 720
+---
+
+## What it is
+
+Most apps need the same handful of collaborative features, and each one usually arrives with its own
+state handling, its own backend assumptions and its own framework wrapper. Tessera puts them behind one
+small contract: you list the features you want in a config object, pick where data lives (the browser,
+the reference server or your own backend) and drop the elements into any framework. A feature you do
+not enable never loads its code.
+
+The demo above is the workspace kit (kanban, notes and the editor) running entirely in your browser.
+Open it in a second tab and the two stay in sync.
+
+| Repository | What it gives you |
+| --- | --- |
+| [tessera](https://github.com/thakurabhishek7283/tessera) | The core: plugin host, zod-validated config, event bus, transports, storage adapters, 18 accessible UI primitives, React bridge. [Playground](https://thakurabhishek7283.github.io/tessera/playground/) |
+| [tessera-realtime](https://github.com/thakurabhishek7283/tessera-realtime) | Presence and live cursors, chat, WebRTC mesh video calls with screen sharing, threaded comments. [Demo](https://thakurabhishek7283.github.io/tessera-realtime/) |
+| [tessera-workspace](https://github.com/thakurabhishek7283/tessera-workspace) | Rich-text editor, sticky notes, kanban with keyboard drag and drop. [Demo](https://thakurabhishek7283.github.io/tessera-workspace/) |
+| [tessera-visual](https://github.com/thakurabhishek7283/tessera-visual) | Image annotator, whiteboard, MapLibre maps and a location picker. [Demo](https://thakurabhishek7283.github.io/tessera-visual/) |
+| [tessera-server](https://github.com/thakurabhishek7283/tessera-server) | Fastify backend: WebSocket rooms, chat history, a versioned document store, uploads, TURN credentials, bring-your-own JWT auth |
+
+## How it works
+
+- **Adapters instead of a fixed backend.** Kits talk only to a *transport* and a *storage* adapter, so
+  the same code runs over `BroadcastChannel` between tabs (which is how every demo works with nothing
+  to host), over WebSocket to the server, or against your own REST API.
+- **Validated at every edge.** Config, feature options, stored documents and wire frames all go through
+  zod schemas that the client and the server share, and errors name the offending path.
+- **Kits never import each other.** They cooperate through a typed service registry extended by
+  declaration merging, so the chat composer can use the editor when it is enabled and fall back to a
+  textarea when it is not.
+- **Concurrency handled explicitly.** Kanban cards and columns are ordered with fractional-index ranks,
+  writes are optimistic and re-applied on a version conflict, and the server's document store uses
+  `If-Match` optimistic concurrency.
+- **Accessible by default.** Menus, dialogs and drag and drop work from the keyboard, colour tokens are
+  checked for WCAG 2.2 AA in light and dark, and component tests run axe-core.
+
+## Engineering
+
+Five pnpm + Turborepo repositories with CI on every push: Vitest unit tests and browser-mode component
+tests in Chromium, Playwright end-to-end tests against the built demos, bundle budgets enforced with
+size-limit, and architecture decision records for the choices above (Web Components with a thin React
+wrapper, a small JSON protocol instead of Socket.IO, SQLite with Drizzle on the server).

@@ -1,24 +1,41 @@
-# Portfolio
+# Under Formation
 
-Personal site built with [Astro](https://astro.build): projects with live demos, interactive
-algorithm visualizations, and a blog. The site is fully static; interactive parts are React
-islands that only load JavaScript on pages that use them.
+[![Deploy](https://github.com/thakurabhishek7283/under-formation/actions/workflows/deploy.yml/badge.svg)](https://github.com/thakurabhishek7283/under-formation/actions/workflows/deploy.yml)
+
+My personal site, live at **[thakurabhishek7283.github.io/under-formation](https://thakurabhishek7283.github.io/under-formation/)**.
+It has the projects I've built and 30 interactive visualizations of things I've learned, built with
+[Astro](https://astro.build). The site is fully static, and the interactive parts are React islands
+that only load JavaScript on the pages that use them.
+
+| Section | What's there |
+| --- | --- |
+| [Projects](https://thakurabhishek7283.github.io/under-formation/projects/) | Tessera, Circuit Forge and Chase, with a live demo embedded where one exists |
+| [Visualize](https://thakurabhishek7283.github.io/under-formation/visualize/) | How LLMs work (tokenization, positional encoding, self-attention, the transformer, sampling, the KV cache), efficient LLMs (LoRA, quantization), training and classical ML (backpropagation, gradient descent, k-NN, SVM, decision trees, random forests, a CNN digit recognizer), and data structures and algorithms (Bloom filter, HyperLogLog, segment and Fenwick trees, KMP, sorting) |
+| [About](https://thakurabhishek7283.github.io/under-formation/about/) | Experience and skills |
+
+Some details that took the most care:
+
+- **Algorithms are plain TypeScript, separate from the UI.** Step-by-step pages record a trace of
+  snapshots, and a code panel highlights the line that produced each step along with the variables in
+  scope.
+- **Server and browser render identical output.** Random data comes from a seeded generator and every
+  number in markup is rounded, and anything that branches on floating-point results is computed after
+  hydration, because `Math.exp` and friends can differ in the last bit between Node and a browser.
+- **The CNN ships pre-trained weights** that `npm run train:cnn` regenerates deterministically.
+- **Accessible charts.** Colour ramps are checked for colour-blind safety, and class is shown by shape as
+  well as colour.
 
 ## Commands
 
 | Command           | What it does                                   |
 | ----------------- | ---------------------------------------------- |
-| `npm run dev`     | Dev server at `http://localhost:4321` (drafts visible) |
+| `npm run dev`     | Dev server at `http://localhost:4321/under-formation/` (drafts visible) |
 | `npm run build`   | Production build to `dist/`                    |
 | `npm run preview` | Serve the production build locally             |
 | `npm run check`   | Type-check `.astro`, `.ts`, `.tsx` and content |
 | `npm run train:cnn` | Retrain the digit CNN's shipped weights    |
 
-## Make it yours
-
-1. `src/consts.ts`: your name, tagline, email, social links.
-2. `astro.config.mjs`: set `site` to your real domain (used for the sitemap, RSS, canonical URLs).
-3. Replace `src/content/projects/example-project.mdx` and `src/content/blog/hello-world.mdx`.
+Site-wide settings (name, tagline, social links, whether the blog is shown) live in `src/consts.ts`.
 
 ## Structure
 
@@ -208,5 +225,6 @@ standing alone.
 
 ## Deploying
 
-It's a static site: `npm run build` and deploy `dist/`. Vercel, Netlify, Cloudflare Pages and
-GitHub Pages all detect Astro automatically.
+Every push to `main` builds the site and publishes it to GitHub Pages
+([`deploy.yml`](.github/workflows/deploy.yml)). The site is served under `/under-formation/`;
+`astro.config.mjs` sets that base path and prefixes root-relative links written in Markdown.

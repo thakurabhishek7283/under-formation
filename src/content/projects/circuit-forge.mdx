@@ -1,0 +1,33 @@
+---
+title: Circuit Forge
+description: An AI tutor for analog electronics. An LLM composes circuits from verified blocks, each block is simulated and repaired until it meets its spec, and the result is animated into a schematic that simulates live in the browser with ngspice compiled to WebAssembly.
+date: 2025-10-22
+tech: [Rust, WebAssembly, PyO3, React, FastAPI, PostgreSQL, Redis, ngspice]
+status: wip
+featured: true
+repo: https://github.com/thakurabhishek7283/Analog-Copilot
+---
+
+## What it is
+
+Ask for "a 1 kHz Sallen-Key low-pass driven by a sine source" and Circuit Forge plans it as verified
+building blocks, composes and checks each one, and streams the result into a schematic editor. Parts
+scale in and wires draw in as each block is committed, and the circuit simulates in the browser so you
+can probe it, retune a capacitor and watch a spec check turn red.
+
+Phases 0 to 2 are built: the shared Rust core, the local-first editor and the generation pipeline. The
+grounded tutor, which answers questions by citing live simulation values, is next.
+
+## How it works
+
+- **One source of truth in three languages.** The circuit IR, the edit operations, electrical rule
+  checks and the SPICE compiler live in one Rust crate. The browser calls it through WebAssembly, the
+  API through PyO3, and the TypeScript and Pydantic types are generated from its JSON Schema.
+- **Plan, compose, verify, repair.** A planner picks block templates and links them; each block is
+  composed, trialled in its own test bench on a sandboxed ngspice worker, and a spec miss goes back to
+  the model with the measured value. After three attempts the block falls back to its verified template.
+- **Streamed and resumable.** Job events go to the browser over Server-Sent Events from Redis Streams,
+  with `Last-Event-ID` resume, so a reload picks up a running generation where it left off.
+- **Tested like a deterministic system.** Model replies are recorded as cassettes keyed by request hash,
+  1,000 random edit logs must give identical results on native Rust, WASM and Python, and every part and
+  template is simulated on both native and WASM ngspice in CI.
